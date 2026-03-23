@@ -42,7 +42,9 @@ A Pokémon-inspired RPG built with Python and Pygame — but instead of pocket m
 ## Running the Game
 
 ```bash
-pip install pygame numpy
+git clone https://github.com/zaynwm/RodentMon.git
+cd RodentMon
+pip install .
 python3 rodentmon.py
 ```
 

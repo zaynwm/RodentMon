@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "rodentmon"
+version = "1.0.0"
+description = "A Pokémon-inspired RPG where you catch, train, and battle rodents"
+requires-python = ">=3.9"
+dependencies = [
+    "pygame>=2.0",
+    "numpy>=1.24",
+]
