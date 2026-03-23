@@ -19,6 +19,12 @@ try:
 except ImportError:
     _MUSIC_AVAILABLE = False
 
+try:
+    from sfx import SoundFX
+    _SFX_AVAILABLE = True
+except ImportError:
+    _SFX_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -1136,7 +1142,49 @@ class Battle:
             self.messages = [f"A wild {enemy.nickname} (Lv.{enemy.level}) appeared!"]
         else:
             self.messages = [f"{trainer_name} wants to battle!",
-                           f"{trainer_name} sent out {self.enemy_party[0].nickname}!"]
+                             f"{trainer_name} sent out {self.enemy_party[0].nickname}!"]
+        self.msg_index = 0
+
+    # ------------------------------------------------------------------ #
+    # Sound-effect helpers
+    # ------------------------------------------------------------------ #
+
+    def _sfx(self, name: str):
+        """Play a sound effect if sfx is available."""
+        s = getattr(self.game, 'sfx', None)
+        if s:
+            s.play(name)
+
+    def _sfx_for_msg(self, msg: str):
+        """Derive the appropriate sfx name from a battle message string."""
+        if 'used' in msg:          return 'attack'
+        if 'super effective' in msg: return 'super_effective'
+        if 'not very effective' in msg: return 'not_effective'
+        if 'fainted' in msg:       return 'faint'
+        if 'Gotcha' in msg:        return 'catch_success'
+        if 'Rodent Ball' in msg:   return 'catch_throw'
+        if 'broke free' in msg:    return 'catch_fail'
+        if 'grew to level' in msg: return 'level_up'
+        if 'evolved' in msg:       return 'evolve'
+        if 'XP' in msg:            return 'xp'
+        if 'Got away' in msg:      return 'run'
+        if 'received $' in msg:    return 'win'
+        return None
+
+    def _play_msg_sfx(self):
+        """Play the sfx corresponding to the currently-displayed message."""
+        if self.msg_index < len(self.messages):
+            name = self._sfx_for_msg(self.messages[self.msg_index])
+            if name:
+                self._sfx(name)
+
+    def _set_messages(self, msgs):
+        """Set the message list, reset index, and play the first sfx."""
+        self.messages = msgs
+        self.msg_index = 0
+        self._play_msg_sfx()
+
+    # ------------------------------------------------------------------ #
 
     def _first_alive(self, party):
         for i, r in enumerate(party):
@@ -1303,114 +1351,118 @@ class Battle:
                         self.battle_over = True
                     else:
                         self._after_turn()
+                else:
+                    self._play_msg_sfx()
 
         elif self.state == self.STATE_MENU:
             if event.key == pygame.K_UP:
                 self.menu_cursor = (self.menu_cursor - 1) % 4
+                self._sfx('cursor')
             elif event.key == pygame.K_DOWN:
                 self.menu_cursor = (self.menu_cursor + 1) % 4
+                self._sfx('cursor')
             elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                 if self.menu_cursor == 0:  # Fight
                     self.state = self.STATE_MOVE_SELECT
                     self.move_cursor = 0
+                    self._sfx('confirm')
                 elif self.menu_cursor == 1:  # Rodents
                     self.state = self.STATE_SWITCH
                     self.switch_cursor = 0
+                    self._sfx('confirm')
                 elif self.menu_cursor == 2:  # Catch (wild only)
                     if self.is_wild:
-                        self.messages = self._try_catch()
-                        self.msg_index = 0
+                        self._set_messages(self._try_catch())
                         self.state = self.STATE_EXECUTING
                     else:
-                        self.messages = ["Can't catch a trainer's rodent!"]
-                        self.msg_index = 0
+                        self._set_messages(["Can't catch a trainer's rodent!"])
                         self.state = self.STATE_EXECUTING
                 elif self.menu_cursor == 3:  # Run
                     if self.is_wild:
                         pr = self._player_rodent()
                         er = self._enemy_rodent()
                         if random.randint(0, 100) < 50 + pr.spd - er.spd:
-                            self.messages = ["Got away safely!"]
+                            msgs = ["Got away safely!"]
                             self.result = "run"
                         else:
-                            self.messages = ["Can't escape!"]
-                            # Enemy turn
+                            msgs = ["Can't escape!"]
                             move_name = random.choice(er.moves)
                             move_data = MOVES[move_name]
-                            self.messages.append(f"{er.nickname} used {move_name}!")
+                            msgs.append(f"{er.nickname} used {move_name}!")
                             if move_data["power"] > 0 and random.randint(1, 100) <= move_data["acc"]:
                                 dmg, eff = self._calc_damage(er, pr, move_data)
                                 pr.hp = max(0, pr.hp - dmg)
                                 if pr.hp <= 0:
-                                    self.messages.append(f"{pr.nickname} fainted!")
-                        self.msg_index = 0
+                                    msgs.append(f"{pr.nickname} fainted!")
+                        self._set_messages(msgs)
                         self.state = self.STATE_EXECUTING
                     else:
-                        self.messages = ["Can't run from a trainer battle!"]
-                        self.msg_index = 0
+                        self._set_messages(["Can't run from a trainer battle!"])
                         self.state = self.STATE_EXECUTING
             elif event.key in (pygame.K_x, pygame.K_ESCAPE):
-                pass
+                self._sfx('back')
 
         elif self.state == self.STATE_MOVE_SELECT:
             pr = self._player_rodent()
             n_moves = len(pr.moves)
             if event.key == pygame.K_UP:
                 self.move_cursor = (self.move_cursor - 1) % n_moves
+                self._sfx('cursor')
             elif event.key == pygame.K_DOWN:
                 self.move_cursor = (self.move_cursor + 1) % n_moves
+                self._sfx('cursor')
             elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
-                self.messages = self._do_turn(self.move_cursor)
-                self.msg_index = 0
+                self._set_messages(self._do_turn(self.move_cursor))
                 self.state = self.STATE_EXECUTING
             elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                 self.state = self.STATE_MENU
+                self._sfx('back')
 
         elif self.state == self.STATE_SWITCH:
             n = len(self.player_party)
             if event.key == pygame.K_UP:
                 self.switch_cursor = (self.switch_cursor - 1) % n
+                self._sfx('cursor')
             elif event.key == pygame.K_DOWN:
                 self.switch_cursor = (self.switch_cursor + 1) % n
+                self._sfx('cursor')
             elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                 target = self.player_party[self.switch_cursor]
                 if target.hp <= 0:
-                    self.messages = [f"{target.nickname} has fainted!"]
-                    self.msg_index = 0
+                    self._set_messages([f"{target.nickname} has fainted!"])
                     self.state = self.STATE_EXECUTING
                 elif self.switch_cursor == self.player_active:
-                    self.messages = [f"{target.nickname} is already out!"]
-                    self.msg_index = 0
+                    self._set_messages([f"{target.nickname} is already out!"])
                     self.state = self.STATE_EXECUTING
                 else:
                     old = self._player_rodent()
                     old.reset_battle_mods()
                     self.player_active = self.switch_cursor
                     new = self._player_rodent()
-                    self.messages = [f"Come back, {old.nickname}!",
-                                   f"Go, {new.nickname}!"]
-                    # Enemy gets a free turn
+                    msgs = [f"Come back, {old.nickname}!", f"Go, {new.nickname}!"]
                     er = self._enemy_rodent()
                     move_name = random.choice(er.moves)
                     move_data = MOVES[move_name]
-                    self.messages.append(f"{er.nickname} used {move_name}!")
+                    msgs.append(f"{er.nickname} used {move_name}!")
                     if move_data["power"] > 0 and random.randint(1, 100) <= move_data["acc"]:
                         dmg, eff = self._calc_damage(er, new, move_data)
                         new.hp = max(0, new.hp - dmg)
                         if new.hp <= 0:
-                            self.messages.append(f"{new.nickname} fainted!")
-                    self.msg_index = 0
+                            msgs.append(f"{new.nickname} fainted!")
+                    self._set_messages(msgs)
                     self.state = self.STATE_EXECUTING
             elif event.key in (pygame.K_x, pygame.K_ESCAPE):
-                # Only go back if we have a living active rodent
                 if self._player_rodent().hp > 0:
                     self.state = self.STATE_MENU
+                    self._sfx('back')
 
         elif self.state == self.STATE_RESULT:
             if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                 self.msg_index += 1
                 if self.msg_index >= len(self.messages):
                     self.battle_over = True
+                else:
+                    self._play_msg_sfx()
 
     def _after_turn(self):
         """Check win/lose conditions after a turn resolves."""
@@ -1419,25 +1471,21 @@ class Battle:
 
         if self.result == "run":
             self.state = self.STATE_RESULT
-            self.messages = ["Got away safely!"]
-            self.msg_index = 0
+            self._set_messages(["Got away safely!"])
             return
 
         if self.result == "catch":
             self.state = self.STATE_RESULT
-            self.messages = [f"Battle over!"]
-            self.msg_index = 0
+            self._set_messages(["Battle over!"])
             return
 
         # Enemy fainted
         if er.hp <= 0:
             er.reset_battle_mods()
-            # XP gain
             xp_gain = (er.level * 10) + 20
             xp_msgs = pr.gain_xp(xp_gain)
-            self.messages = [f"{pr.nickname} gained {xp_gain} XP!"] + xp_msgs
+            msgs = [f"{pr.nickname} gained {xp_gain} XP!"] + xp_msgs
 
-            # Next enemy?
             next_enemy = None
             for i in range(len(self.enemy_party)):
                 if self.enemy_party[i].hp > 0:
@@ -1447,35 +1495,31 @@ class Battle:
                 self.enemy_active = next_enemy
                 ne = self._enemy_rodent()
                 if self.trainer_name:
-                    self.messages.append(f"{self.trainer_name} sent out {ne.nickname}!")
-                self.msg_index = 0
+                    msgs.append(f"{self.trainer_name} sent out {ne.nickname}!")
+                self._set_messages(msgs)
                 self.state = self.STATE_EXECUTING
                 return
             else:
-                # Victory!
                 self.result = "win"
                 if self.reward > 0:
                     self.game.money += self.reward
-                    self.messages.append(f"You received ${self.reward}!")
-                self.msg_index = 0
+                    msgs.append(f"You received ${self.reward}!")
+                self._set_messages(msgs)
                 self.state = self.STATE_XP
                 return
 
         # Player fainted
         if pr.hp <= 0:
             pr.reset_battle_mods()
-            # Any alive?
             alive = [i for i, r in enumerate(self.player_party) if r.hp > 0]
             if alive:
-                self.messages = [f"Choose next rodent!"]
-                self.msg_index = 0
+                self._set_messages(["Choose next rodent!"])
                 self.state = self.STATE_SWITCH
                 self.switch_cursor = alive[0]
                 return
             else:
                 self.result = "lose"
-                self.messages = ["All your rodents fainted!", "You blacked out..."]
-                self.msg_index = 0
+                self._set_messages(["All your rodents fainted!", "You blacked out..."])
                 self.state = self.STATE_RESULT
                 return
 
@@ -1698,6 +1742,9 @@ class Game:
             self.music.play('title')
         else:
             self.music = None
+
+        # Sound effects
+        self.sfx = SoundFX() if _SFX_AVAILABLE else None
 
         self.font = pygame.font.Font(None, 24)
         self.small_font = pygame.font.Font(None, 18)
@@ -2037,17 +2084,21 @@ class Game:
                 max_opt = 1 if any_save else 0
                 if event.key == pygame.K_UP:
                     self.title_cursor = max(0, self.title_cursor - 1)
+                    if self.sfx: self.sfx.play('cursor')
                 elif event.key == pygame.K_DOWN:
                     self.title_cursor = min(max_opt, self.title_cursor + 1)
+                    if self.sfx: self.sfx.play('cursor')
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     self.slot_cursor = 0
                     self.confirm_action = None
                     if self.title_cursor == 0:           # NEW GAME
                         self.slot_mode = 'new'
                         self.state = self.STATE_SLOT_SELECT
+                        if self.sfx: self.sfx.play('confirm')
                     elif self.title_cursor == 1 and any_save:   # LOAD GAME
                         self.slot_mode = 'load'
                         self.state = self.STATE_SLOT_SELECT
+                        if self.sfx: self.sfx.play('confirm')
 
         elif self.state == self.STATE_SLOT_SELECT:
             if event.type == pygame.KEYDOWN:
@@ -2060,43 +2111,56 @@ class Game:
                         if self.save_slot == slot:
                             self.save_slot = None
                         self.confirm_action = None
+                        if self.sfx: self.sfx.play('back')
                     elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                         self.confirm_action = None
+                        if self.sfx: self.sfx.play('back')
 
                 elif self.confirm_action == 'overwrite':
                     if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                         self.confirm_action = None
                         self._start_new_game_in_slot(slot)
+                        if self.sfx: self.sfx.play('confirm')
                     elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                         self.confirm_action = None
+                        if self.sfx: self.sfx.play('back')
 
                 else:
                     if event.key == pygame.K_UP:
                         self.slot_cursor = (self.slot_cursor - 1) % self.NUM_SAVE_SLOTS
+                        if self.sfx: self.sfx.play('cursor')
                     elif event.key == pygame.K_DOWN:
                         self.slot_cursor = (self.slot_cursor + 1) % self.NUM_SAVE_SLOTS
+                        if self.sfx: self.sfx.play('cursor')
                     elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                         if self.slot_mode == 'load':
                             if info:
                                 self._load_game(slot)
+                                if self.sfx: self.sfx.play('confirm')
                         else:  # 'new'
                             if info:
                                 self.confirm_action = 'overwrite'
+                                if self.sfx: self.sfx.play('cursor')
                             else:
                                 self._start_new_game_in_slot(slot)
+                                if self.sfx: self.sfx.play('confirm')
                     elif event.key == pygame.K_d:
                         if info:
                             self.confirm_action = 'delete'
+                            if self.sfx: self.sfx.play('cursor')
                     elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                         self.state = self.STATE_TITLE
                         self.title_cursor = 0
+                        if self.sfx: self.sfx.play('back')
 
         elif self.state == self.STATE_STARTER:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     self.menu_cursor = (self.menu_cursor - 1) % 3
+                    if self.sfx: self.sfx.play('cursor')
                 elif event.key == pygame.K_RIGHT:
                     self.menu_cursor = (self.menu_cursor + 1) % 3
+                    if self.sfx: self.sfx.play('cursor')
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     starters = ["Mouse", "Gerbil", "Squirrel"]
                     chosen = starters[self.menu_cursor]
@@ -2116,14 +2180,17 @@ class Game:
             if self.textbox.active:
                 if event.type == pygame.KEYDOWN and event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     self.textbox.advance()
+                    if self.sfx: self.sfx.play('text')
                 return
 
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     self._interact()
+                    if self.sfx: self.sfx.play('confirm')
                 elif event.key == pygame.K_ESCAPE:
                     self.state = self.STATE_MENU
                     self.menu_cursor = 0
+                    if self.sfx: self.sfx.play('cursor')
 
         elif self.state == self.STATE_BATTLE:
             if self.battle:
@@ -2133,8 +2200,10 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     self.menu_cursor = (self.menu_cursor - 1) % 4
+                    if self.sfx: self.sfx.play('cursor')
                 elif event.key == pygame.K_DOWN:
                     self.menu_cursor = (self.menu_cursor + 1) % 4
+                    if self.sfx: self.sfx.play('cursor')
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     if self.menu_cursor == 0:  # Party
                         pass  # Show party info in draw
@@ -2143,12 +2212,15 @@ class Game:
                         self.state = self.STATE_OVERWORLD
                         slot_label = f" (Slot {self.save_slot})" if self.save_slot else ""
                         self.textbox.show(f"Game saved{slot_label}!")
+                        if self.sfx: self.sfx.play('save')
                     elif self.menu_cursor == 2:  # Badges
                         pass
                     elif self.menu_cursor == 3:  # Back
                         self.state = self.STATE_OVERWORLD
+                        if self.sfx: self.sfx.play('back')
                 elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                     self.state = self.STATE_OVERWORLD
+                    if self.sfx: self.sfx.play('back')
 
     def _update(self, dt):
         if self.transitioning:
@@ -2190,6 +2262,7 @@ class Game:
                         self.player_y = ny
                         self.moving = True
                         self.move_timer = 120
+                        if self.sfx: self.sfx.play('step')
                         self._check_exits()
                         if not self.transitioning:
                             self._check_encounters()
