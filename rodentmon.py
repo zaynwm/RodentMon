@@ -12,6 +12,12 @@ import json
 import os
 import traceback
 
+try:
+    from music import MusicPlayer
+    _MUSIC_AVAILABLE = True
+except ImportError:
+    _MUSIC_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -1682,6 +1688,13 @@ class Game:
         pygame.display.set_caption("RodentMon")
         self.clock = pygame.time.Clock()
 
+        # Music — synthesised on startup; gracefully skipped if numpy missing
+        if _MUSIC_AVAILABLE:
+            self.music = MusicPlayer()
+            self.music.play('title')
+        else:
+            self.music = None
+
         self.font = pygame.font.Font(None, 24)
         self.small_font = pygame.font.Font(None, 18)
         self.big_font = pygame.font.Font(None, 48)
@@ -1754,6 +1767,8 @@ class Game:
         self.current_map = self.maps[map_name]
         self.player_x = px
         self.player_y = py
+        if self.music and self.state != self.STATE_BATTLE:
+            self.music.play_for_map(map_name)
 
     def _heal_party(self):
         for r in self.party:
@@ -1868,6 +1883,9 @@ class Game:
         self.battle = Battle(self, enemy_party, is_wild, trainer_name,
                            win_cb, lose_cb, reward)
         self.state = self.STATE_BATTLE
+        if self.music:
+            track = 'gym' if not is_wild and 'gym' in self.current_map_name else 'battle'
+            self.music.play(track)
 
     def _start_trainer_battle(self, trainer):
         tid = f"{self.current_map_name}_{trainer['name']}"
@@ -1914,6 +1932,8 @@ class Game:
         self.player_y = data["py"]
         self.has_starter = data["has_starter"]
         self.state = self.STATE_OVERWORLD
+        if self.music:
+            self.music.play_for_map(self.current_map_name)
         return True
 
     def run(self):
@@ -1960,6 +1980,8 @@ class Game:
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     if self.title_cursor == 0:
                         self.state = self.STATE_OVERWORLD
+                        if self.music:
+                            self.music.play_for_map(self.current_map_name)
                     elif self.title_cursor == 1 and has_save:
                         self._load_game()
 
@@ -1975,9 +1997,13 @@ class Game:
                     self.party.append(Rodent(chosen, 5))
                     self.has_starter = True
                     self.state = self.STATE_OVERWORLD
+                    if self.music:
+                        self.music.play_for_map(self.current_map_name)
                     self.textbox.show(f"You chose {chosen}!\n{chosen} seems happy!")
                 elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                     self.state = self.STATE_OVERWORLD
+                    if self.music:
+                        self.music.play_for_map(self.current_map_name)
 
         elif self.state == self.STATE_OVERWORLD:
             if self.textbox.active:
@@ -2080,6 +2106,8 @@ class Game:
                         r.reset_battle_mods()
                     self.battle = None
                     self.state = self.STATE_OVERWORLD
+                    if self.music:
+                        self.music.play_for_map(self.current_map_name)
 
     def _draw(self):
         if self.state == self.STATE_TITLE:
