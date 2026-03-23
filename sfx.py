@@ -263,15 +263,21 @@ class SoundFX:
         # Reserve enough channels: channel 0 = music, 1+ = sfx
         pygame.mixer.set_num_channels(max(pygame.mixer.get_num_channels(), 16))
 
-        self._sounds: dict[str, pygame.mixer.Sound] = {}
+        self._sounds: dict = {}
         for name, fn in _RECIPES.items():
             self._sounds[name] = _to_sound(fn())
+        self.enabled = True
 
     def play(self, name: str):
-        """Play a named sound effect on any free channel."""
+        """Play a named sound effect on any free channel (no-op if disabled)."""
+        if not self.enabled:
+            return
         s = self._sounds.get(name)
         if s:
             # find_channel(True) forces a channel even if all busy
             ch = pygame.mixer.find_channel(True)
             if ch:
                 ch.play(s)
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = enabled

@@ -387,6 +387,8 @@ class MusicPlayer:
         self._sounds   = {}          # track_name -> pygame.mixer.Sound
         self._channel  = pygame.mixer.Channel(0)
         self._current  = None
+        self.volume    = 1.0
+        self.enabled   = True
 
         print("[music] Synthesising chiptune tracks …", flush=True)
         for name, (spec, bpm) in _SONGS.items():
@@ -411,8 +413,17 @@ class MusicPlayer:
         self._current = None
 
     def set_volume(self, vol: float):
-        """vol in [0.0, 1.0]"""
-        self._channel.set_volume(max(0.0, min(1.0, vol)))
+        """Set music volume (0.0–1.0). Persists across enable/disable."""
+        self.volume = max(0.0, min(1.0, vol))
+        self._apply_volume()
+
+    def set_enabled(self, enabled: bool):
+        """Mute/unmute music without forgetting the current track or volume."""
+        self.enabled = enabled
+        self._apply_volume()
+
+    def _apply_volume(self):
+        self._channel.set_volume(self.volume if self.enabled else 0.0)
 
     # ------------------------------------------------------------------ #
     def track_for_map(self, map_name: str) -> str:

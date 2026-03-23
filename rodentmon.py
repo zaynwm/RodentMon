@@ -1727,6 +1727,7 @@ class Game:
     STATE_BATTLE = 3
     STATE_MENU = 4
     STATE_SLOT_SELECT = 5
+    STATE_SETTINGS = 6
 
     NUM_SAVE_SLOTS = 3
 
@@ -1803,6 +1804,9 @@ class Game:
         self.transitioning = False
         self.transition_phase = "in"  # "in" = fading to black, "out" = fading back
         self.transition_callback = None
+
+        # Settings
+        self.settings_cursor = 0    # 0=music vol, 1=music on/off, 2=sfx on/off
 
         # Save slots
         self.save_slot = None        # active slot number (1-3)
@@ -2199,14 +2203,14 @@ class Game:
         elif self.state == self.STATE_MENU:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    self.menu_cursor = (self.menu_cursor - 1) % 4
+                    self.menu_cursor = (self.menu_cursor - 1) % 5
                     if self.sfx: self.sfx.play('cursor')
                 elif event.key == pygame.K_DOWN:
-                    self.menu_cursor = (self.menu_cursor + 1) % 4
+                    self.menu_cursor = (self.menu_cursor + 1) % 5
                     if self.sfx: self.sfx.play('cursor')
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     if self.menu_cursor == 0:  # Party
-                        pass  # Show party info in draw
+                        pass
                     elif self.menu_cursor == 1:  # Save
                         self._save_game()
                         self.state = self.STATE_OVERWORLD
@@ -2215,11 +2219,48 @@ class Game:
                         if self.sfx: self.sfx.play('save')
                     elif self.menu_cursor == 2:  # Badges
                         pass
-                    elif self.menu_cursor == 3:  # Back
+                    elif self.menu_cursor == 3:  # Settings
+                        self.state = self.STATE_SETTINGS
+                        self.settings_cursor = 0
+                        if self.sfx: self.sfx.play('confirm')
+                    elif self.menu_cursor == 4:  # Back
                         self.state = self.STATE_OVERWORLD
                         if self.sfx: self.sfx.play('back')
                 elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                     self.state = self.STATE_OVERWORLD
+                    if self.sfx: self.sfx.play('back')
+
+        elif self.state == self.STATE_SETTINGS:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.settings_cursor = (self.settings_cursor - 1) % 3
+                    if self.sfx: self.sfx.play('cursor')
+                elif event.key == pygame.K_DOWN:
+                    self.settings_cursor = (self.settings_cursor + 1) % 3
+                    if self.sfx: self.sfx.play('cursor')
+                elif self.settings_cursor == 0:  # Music Volume
+                    if event.key == pygame.K_LEFT and self.music:
+                        self.music.set_volume(round(max(0.0, self.music.volume - 0.1), 1))
+                        if self.sfx: self.sfx.play('cursor')
+                    elif event.key == pygame.K_RIGHT and self.music:
+                        self.music.set_volume(round(min(1.0, self.music.volume + 0.1), 1))
+                        if self.sfx: self.sfx.play('cursor')
+                elif self.settings_cursor == 1:  # Music on/off
+                    if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE,
+                                     pygame.K_LEFT, pygame.K_RIGHT):
+                        if self.music:
+                            self.music.set_enabled(not self.music.enabled)
+                        if self.sfx: self.sfx.play('confirm')
+                elif self.settings_cursor == 2:  # SFX on/off
+                    if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE,
+                                     pygame.K_LEFT, pygame.K_RIGHT):
+                        if self.sfx:
+                            new_state = not self.sfx.enabled
+                            self.sfx.set_enabled(new_state)
+                            if new_state:  # play a sound to confirm it's back on
+                                self.sfx.play('confirm')
+                if event.key in (pygame.K_x, pygame.K_ESCAPE):
+                    self.state = self.STATE_MENU
                     if self.sfx: self.sfx.play('back')
 
     def _update(self, dt):
@@ -2306,6 +2347,10 @@ class Game:
         elif self.state == self.STATE_MENU:
             self._draw_overworld()
             self._draw_pause_menu()
+        elif self.state == self.STATE_SETTINGS:
+            self._draw_overworld()
+            self._draw_pause_menu()
+            self._draw_settings()
 
         if self.transitioning:
             overlay = pygame.Surface((SCREEN_W, SCREEN_H))
@@ -2433,6 +2478,88 @@ class Game:
         ht2 = self.small_font.render(hint, True, GREY)
         self.screen.blit(ht2, (SCREEN_W // 2 - ht2.get_width() // 2, SCREEN_H - 24))
 
+    def _draw_settings(self):
+        # Panel over the content area (left side, same as party/badges)
+        menu_w = 200
+        panel = pygame.Rect(10, 10, SCREEN_W - menu_w - 30, SCREEN_H - 20)
+        pygame.draw.rect(self.screen, WHITE, panel)
+        pygame.draw.rect(self.screen, BLACK, panel, 2)
+
+        title = self.font.render("SETTINGS", True, BLACK)
+        self.screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 12))
+
+        music_vol  = self.music.volume  if self.music else 1.0
+        music_on   = self.music.enabled if self.music else True
+        sfx_on     = self.sfx.enabled   if self.sfx   else True
+
+        rows = [
+            ("Music Volume", 'slider', music_vol),
+            ("Music",        'toggle', music_on),
+            ("Sound Effects", 'toggle', sfx_on),
+        ]
+
+        row_h = 58
+        start_y = panel.y + 50
+        bar_w = 160   # total width of volume bar area
+
+        for i, (label, kind, value) in enumerate(rows):
+            y = start_y + i * row_h
+            selected = (i == self.settings_cursor)
+            label_col = BLACK
+
+            # Row highlight
+            if selected:
+                pygame.draw.rect(self.screen, LIGHT_GREEN,
+                                 (panel.x + 4, y - 4, panel.w - 8, row_h - 4),
+                                 border_radius=4)
+
+            lbl = self.font.render(label, True, label_col)
+            self.screen.blit(lbl, (panel.x + 24, y + 2))
+
+            # Cursor arrow
+            if selected:
+                pygame.draw.polygon(self.screen, BLACK,
+                    [(panel.x + 10, y + 6),
+                     (panel.x + 10, y + 18),
+                     (panel.x + 20, y + 12)])
+
+            if kind == 'slider':
+                # ◄  ■■■■■░░░░░  ►  50%
+                bx = panel.x + 24
+                by = y + 26
+                steps = 10
+                filled = round(value * steps)
+                seg_w = 12
+                gap = 2
+                left_arr = self.small_font.render("<", True, DARK_GREY if value <= 0 else BLACK)
+                self.screen.blit(left_arr, (bx, by))
+                bx += 14
+                for s in range(steps):
+                    col = DARK_GREEN if s < filled else GREY
+                    pygame.draw.rect(self.screen, col, (bx + s * (seg_w + gap), by + 1, seg_w, 10))
+                bx += steps * (seg_w + gap) + 4
+                right_arr = self.small_font.render(">", True, DARK_GREY if value >= 1 else BLACK)
+                self.screen.blit(right_arr, (bx, by))
+                pct = self.small_font.render(f"{round(value * 100)}%", True, DARK_GREY)
+                self.screen.blit(pct, (bx + 14, by))
+
+            else:  # toggle
+                on_col  = DARK_GREEN if value else GREY
+                off_col = GREY if value else RED
+                on_txt  = self.font.render("ON",  True, WHITE if value else GREY)
+                off_txt = self.font.render("OFF", True, WHITE if not value else GREY)
+                tx = panel.x + 24
+                ty = y + 26
+                pygame.draw.rect(self.screen, on_col,  (tx,      ty, 44, 20), border_radius=4)
+                pygame.draw.rect(self.screen, off_col, (tx + 48, ty, 44, 20), border_radius=4)
+                self.screen.blit(on_txt,  (tx +  8, ty + 2))
+                self.screen.blit(off_txt, (tx + 52, ty + 2))
+
+        # Controls hint
+        hint = self.small_font.render(
+            "↑↓ Select   ◄► / Z Adjust   Esc Back", True, GREY)
+        self.screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 22))
+
     def _draw_starter_select(self):
         self.screen.fill(DARK_GREEN)
 
@@ -2547,14 +2674,14 @@ class Game:
         overlay.fill((0, 0, 0, 100))
         self.screen.blit(overlay, (0, 0))
 
-        menu_w, menu_h = 200, 240
+        menu_w, menu_h = 200, 175
         mx = SCREEN_W - menu_w - 10
         my = 10
         menu_rect = pygame.Rect(mx, my, menu_w, menu_h)
         pygame.draw.rect(self.screen, WHITE, menu_rect)
         pygame.draw.rect(self.screen, BLACK, menu_rect, 3)
 
-        options = ["RODENTS", "SAVE", "BADGES", "BACK"]
+        options = ["RODENTS", "SAVE", "BADGES", "SETTINGS", "BACK"]
         for i, opt in enumerate(options):
             y = my + 10 + i * 30
             color = BLACK
