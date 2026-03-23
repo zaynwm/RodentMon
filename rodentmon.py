@@ -11,6 +11,7 @@ import sys
 import json
 import os
 import traceback
+import datetime
 
 try:
     from music import MusicPlayer
@@ -1681,6 +1682,9 @@ class Game:
     STATE_OVERWORLD = 2
     STATE_BATTLE = 3
     STATE_MENU = 4
+    STATE_SLOT_SELECT = 5
+
+    NUM_SAVE_SLOTS = 3
 
     def __init__(self):
         pygame.init()
@@ -1753,8 +1757,11 @@ class Game:
         self.transition_phase = "in"  # "in" = fading to black, "out" = fading back
         self.transition_callback = None
 
-        # Save file
-        self.save_path = os.path.join(os.path.dirname(__file__), "rodentmon_save.json")
+        # Save slots
+        self.save_slot = None        # active slot number (1-3)
+        self.slot_cursor = 0         # cursor row in slot select screen (0-2)
+        self.slot_mode = 'new'       # 'new' or 'load'
+        self.confirm_action = None   # None | 'delete' | 'overwrite'
 
     def _start_transition(self, callback):
         self.transitioning = True
@@ -1769,6 +1776,7 @@ class Game:
         self.player_y = py
         if self.music and self.state != self.STATE_BATTLE:
             self.music.play_for_map(map_name)
+        self._save_game()
 
     def _heal_party(self):
         for r in self.party:
@@ -1904,23 +1912,74 @@ class Game:
                           trainer_name=f"Leader {gym['leader']}",
                           win_cb=on_win, reward=gym["reward"])
 
+    # ------------------------------------------------------------------ #
+    # Save-slot helpers
+    # ------------------------------------------------------------------ #
+
+    def _slot_path(self, slot: int) -> str:
+        base = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base, f"rodentmon_save_{slot}.json")
+
+    def _slot_info(self, slot: int):
+        """Return a summary dict for the slot, or None if empty/corrupt."""
+        path = self._slot_path(slot)
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            return {
+                "map":      data.get("map", "?"),
+                "badges":   len(data.get("badges", [])),
+                "party":    [r["species"] for r in data.get("party", [])],
+                "saved_at": data.get("saved_at", ""),
+            }
+        except Exception:
+            return None
+
+    def _delete_slot(self, slot: int):
+        path = self._slot_path(slot)
+        if os.path.exists(path):
+            os.remove(path)
+
+    def _start_new_game_in_slot(self, slot: int):
+        """Reset all game state and begin a fresh game in the given slot."""
+        self.save_slot = slot
+        self.party = []
+        self.money = 1000
+        self.badges = []
+        self.defeated_trainers = set()
+        self.has_starter = False
+        self.current_map_name = "hometown"
+        self.current_map = self.maps["hometown"]
+        spawn = self.current_map["spawn"]
+        self.player_x = spawn[0]
+        self.player_y = spawn[1]
+        self.state = self.STATE_STARTER
+
     def _save_game(self):
+        """Auto-save to the active slot.  Does nothing if no slot is active."""
+        if self.save_slot is None:
+            return
         data = {
-            "party": [r.to_dict() for r in self.party],
-            "money": self.money,
-            "badges": self.badges,
-            "defeated": list(self.defeated_trainers),
-            "map": self.current_map_name,
-            "px": self.player_x, "py": self.player_y,
+            "party":      [r.to_dict() for r in self.party],
+            "money":      self.money,
+            "badges":     self.badges,
+            "defeated":   list(self.defeated_trainers),
+            "map":        self.current_map_name,
+            "px":         self.player_x,
+            "py":         self.player_y,
             "has_starter": self.has_starter,
+            "saved_at":   datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
-        with open(self.save_path, 'w') as f:
+        with open(self._slot_path(self.save_slot), 'w') as f:
             json.dump(data, f)
 
-    def _load_game(self):
-        if not os.path.exists(self.save_path):
+    def _load_game(self, slot: int):
+        path = self._slot_path(slot)
+        if not os.path.exists(path):
             return False
-        with open(self.save_path) as f:
+        with open(path) as f:
             data = json.load(f)
         self.party = [Rodent.from_dict(d) for d in data["party"]]
         self.money = data["money"]
@@ -1931,6 +1990,7 @@ class Game:
         self.player_x = data["px"]
         self.player_y = data["py"]
         self.has_starter = data["has_starter"]
+        self.save_slot = slot
         self.state = self.STATE_OVERWORLD
         if self.music:
             self.music.play_for_map(self.current_map_name)
@@ -1971,19 +2031,65 @@ class Game:
 
         if self.state == self.STATE_TITLE:
             if event.type == pygame.KEYDOWN:
-                has_save = os.path.exists(self.save_path)
-                max_opt = 1 if has_save else 0
+                any_save = any(
+                    self._slot_info(s) for s in range(1, self.NUM_SAVE_SLOTS + 1)
+                )
+                max_opt = 1 if any_save else 0
                 if event.key == pygame.K_UP:
                     self.title_cursor = max(0, self.title_cursor - 1)
                 elif event.key == pygame.K_DOWN:
                     self.title_cursor = min(max_opt, self.title_cursor + 1)
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
-                    if self.title_cursor == 0:
-                        self.state = self.STATE_OVERWORLD
-                        if self.music:
-                            self.music.play_for_map(self.current_map_name)
-                    elif self.title_cursor == 1 and has_save:
-                        self._load_game()
+                    self.slot_cursor = 0
+                    self.confirm_action = None
+                    if self.title_cursor == 0:           # NEW GAME
+                        self.slot_mode = 'new'
+                        self.state = self.STATE_SLOT_SELECT
+                    elif self.title_cursor == 1 and any_save:   # LOAD GAME
+                        self.slot_mode = 'load'
+                        self.state = self.STATE_SLOT_SELECT
+
+        elif self.state == self.STATE_SLOT_SELECT:
+            if event.type == pygame.KEYDOWN:
+                slot = self.slot_cursor + 1   # 1-based
+                info = self._slot_info(slot)
+
+                if self.confirm_action == 'delete':
+                    if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                        self._delete_slot(slot)
+                        if self.save_slot == slot:
+                            self.save_slot = None
+                        self.confirm_action = None
+                    elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                        self.confirm_action = None
+
+                elif self.confirm_action == 'overwrite':
+                    if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                        self.confirm_action = None
+                        self._start_new_game_in_slot(slot)
+                    elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                        self.confirm_action = None
+
+                else:
+                    if event.key == pygame.K_UP:
+                        self.slot_cursor = (self.slot_cursor - 1) % self.NUM_SAVE_SLOTS
+                    elif event.key == pygame.K_DOWN:
+                        self.slot_cursor = (self.slot_cursor + 1) % self.NUM_SAVE_SLOTS
+                    elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                        if self.slot_mode == 'load':
+                            if info:
+                                self._load_game(slot)
+                        else:  # 'new'
+                            if info:
+                                self.confirm_action = 'overwrite'
+                            else:
+                                self._start_new_game_in_slot(slot)
+                    elif event.key == pygame.K_d:
+                        if info:
+                            self.confirm_action = 'delete'
+                    elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                        self.state = self.STATE_TITLE
+                        self.title_cursor = 0
 
         elif self.state == self.STATE_STARTER:
             if event.type == pygame.KEYDOWN:
@@ -1999,6 +2105,7 @@ class Game:
                     self.state = self.STATE_OVERWORLD
                     if self.music:
                         self.music.play_for_map(self.current_map_name)
+                    self._save_game()
                     self.textbox.show(f"You chose {chosen}!\n{chosen} seems happy!")
                 elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                     self.state = self.STATE_OVERWORLD
@@ -2034,7 +2141,8 @@ class Game:
                     elif self.menu_cursor == 1:  # Save
                         self._save_game()
                         self.state = self.STATE_OVERWORLD
-                        self.textbox.show("Game saved!")
+                        slot_label = f" (Slot {self.save_slot})" if self.save_slot else ""
+                        self.textbox.show(f"Game saved{slot_label}!")
                     elif self.menu_cursor == 2:  # Badges
                         pass
                     elif self.menu_cursor == 3:  # Back
@@ -2108,10 +2216,13 @@ class Game:
                     self.state = self.STATE_OVERWORLD
                     if self.music:
                         self.music.play_for_map(self.current_map_name)
+                    self._save_game()
 
     def _draw(self):
         if self.state == self.STATE_TITLE:
             self._draw_title()
+        elif self.state == self.STATE_SLOT_SELECT:
+            self._draw_slot_select()
         elif self.state == self.STATE_STARTER:
             self._draw_starter_select()
         elif self.state == self.STATE_OVERWORLD:
@@ -2147,8 +2258,8 @@ class Game:
 
         # Menu
         options = ["NEW GAME"]
-        if os.path.exists(self.save_path):
-            options.append("CONTINUE")
+        if any(self._slot_info(s) for s in range(1, self.NUM_SAVE_SLOTS + 1)):
+            options.append("LOAD GAME")
 
         for i, opt in enumerate(options):
             y = 320 + i * 40
@@ -2163,6 +2274,91 @@ class Game:
 
         controls = self.small_font.render("Arrow keys: Move | Z/Enter: Confirm | X/Esc: Back", True, GREY)
         self.screen.blit(controls, (SCREEN_W // 2 - controls.get_width() // 2, SCREEN_H - 30))
+
+    # Pretty map labels for slot cards
+    _MAP_LABELS = {
+        "hometown": "Hometown", "route1": "Route 1", "town2": "Riverside Town",
+        "route2": "Route 2", "route3": "Route 3", "town3": "Summit Town",
+        "route4": "Route 4", "interior_house": "House", "interior_lab": "Lab",
+        "interior_center_hometown": "Pokémon Centre", "interior_center_town2": "Pokémon Centre",
+        "interior_center_town3": "Pokémon Centre", "interior_gym1": "Gym 1",
+        "interior_gym2": "Gym 2",
+    }
+
+    def _draw_slot_select(self):
+        self.screen.fill(DARK_BLUE)
+
+        heading = "SELECT A SLOT  —  " + ("NEW GAME" if self.slot_mode == 'new' else "LOAD GAME")
+        ht = self.font.render(heading, True, YELLOW)
+        self.screen.blit(ht, (SCREEN_W // 2 - ht.get_width() // 2, 18))
+
+        card_w, card_h = 560, 88
+        card_x = (SCREEN_W - card_w) // 2
+        top_y  = 55
+
+        for i in range(self.NUM_SAVE_SLOTS):
+            slot = i + 1
+            cy   = top_y + i * (card_h + 8)
+            info = self._slot_info(slot)
+            selected = (i == self.slot_cursor)
+
+            border_col = YELLOW if selected else GREY
+            bg_col     = (30, 50, 80) if selected else (20, 30, 50)
+            pygame.draw.rect(self.screen, bg_col,   (card_x, cy, card_w, card_h), border_radius=6)
+            pygame.draw.rect(self.screen, border_col, (card_x, cy, card_w, card_h), 2, border_radius=6)
+
+            # Cursor arrow
+            if selected:
+                pygame.draw.polygon(self.screen, YELLOW,
+                    [(card_x - 16, cy + card_h // 2 - 6),
+                     (card_x - 16, cy + card_h // 2 + 6),
+                     (card_x - 6,  cy + card_h // 2)])
+
+            slot_lbl = self.font.render(f"SLOT {slot}", True, YELLOW if selected else WHITE)
+            self.screen.blit(slot_lbl, (card_x + 12, cy + 8))
+
+            if info:
+                map_label = self._MAP_LABELS.get(info["map"], info["map"])
+                badges_str = f"Badges: {info['badges']}"
+                party_str  = "  ".join(info["party"][:6]) or "No rodents"
+                saved_str  = info["saved_at"]
+
+                loc = self.small_font.render(f"{map_label}  ·  {badges_str}", True, LIGHT_BLUE)
+                self.screen.blit(loc, (card_x + 12, cy + 32))
+
+                pty = self.small_font.render(party_str, True, LIGHT_GREEN)
+                self.screen.blit(pty, (card_x + 12, cy + 50))
+
+                sav = self.small_font.render(f"Saved: {saved_str}", True, GREY)
+                self.screen.blit(sav, (card_x + card_w - sav.get_width() - 12, cy + 66))
+            else:
+                empty = self.font.render("— EMPTY —", True, DARK_GREY)
+                self.screen.blit(empty, (card_x + card_w // 2 - empty.get_width() // 2,
+                                         cy + card_h // 2 - empty.get_height() // 2))
+
+        # Confirmation overlay
+        if self.confirm_action:
+            slot  = self.slot_cursor + 1
+            ox, oy, ow, oh = 140, 185, 360, 80
+            pygame.draw.rect(self.screen, BLACK,  (ox, oy, ow, oh), border_radius=8)
+            pygame.draw.rect(self.screen, RED,    (ox, oy, ow, oh), 2, border_radius=8)
+            if self.confirm_action == 'delete':
+                msg = f"Delete Slot {slot}? This cannot be undone."
+            else:
+                msg = f"Slot {slot} has data. Overwrite?"
+            m1 = self.small_font.render(msg, True, WHITE)
+            m2 = self.small_font.render("[Z / Enter] Yes     [X / Esc] No", True, GREY)
+            self.screen.blit(m1, (ox + ow // 2 - m1.get_width() // 2, oy + 16))
+            self.screen.blit(m2, (ox + ow // 2 - m2.get_width() // 2, oy + 46))
+            return   # don't draw controls hint below while overlay is up
+
+        # Controls hint
+        if self.slot_mode == 'load':
+            hint = "[Z] Load   [D] Delete slot   [Esc] Back"
+        else:
+            hint = "[Z] New game here   [D] Delete slot   [Esc] Back"
+        ht2 = self.small_font.render(hint, True, GREY)
+        self.screen.blit(ht2, (SCREEN_W // 2 - ht2.get_width() // 2, SCREEN_H - 24))
 
     def _draw_starter_select(self):
         self.screen.fill(DARK_GREEN)
