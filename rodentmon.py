@@ -2013,15 +2013,18 @@ class Game:
         if self.save_slot is None:
             return
         data = {
-            "party":      [r.to_dict() for r in self.party],
-            "money":      self.money,
-            "badges":     self.badges,
-            "defeated":   list(self.defeated_trainers),
-            "map":        self.current_map_name,
-            "px":         self.player_x,
-            "py":         self.player_y,
-            "has_starter": self.has_starter,
-            "saved_at":   datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "party":         [r.to_dict() for r in self.party],
+            "money":         self.money,
+            "badges":        self.badges,
+            "defeated":      list(self.defeated_trainers),
+            "map":           self.current_map_name,
+            "px":            self.player_x,
+            "py":            self.player_y,
+            "has_starter":   self.has_starter,
+            "saved_at":      datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "music_volume":  self.music.volume  if self.music else 1.0,
+            "music_enabled": self.music.enabled if self.music else True,
+            "sfx_enabled":   self.sfx.enabled   if self.sfx   else True,
         }
         with open(self._slot_path(self.save_slot), 'w') as f:
             json.dump(data, f)
@@ -2042,6 +2045,11 @@ class Game:
         self.player_y = data["py"]
         self.has_starter = data["has_starter"]
         self.save_slot = slot
+        if self.music:
+            self.music.set_volume(data.get("music_volume", 1.0))
+            self.music.set_enabled(data.get("music_enabled", True))
+        if self.sfx:
+            self.sfx.set_enabled(data.get("sfx_enabled", True))
         self.state = self.STATE_OVERWORLD
         if self.music:
             self.music.play_for_map(self.current_map_name)
@@ -2242,23 +2250,27 @@ class Game:
                     if event.key == pygame.K_LEFT and self.music:
                         self.music.set_volume(round(max(0.0, self.music.volume - 0.1), 1))
                         if self.sfx: self.sfx.play('cursor')
+                        self._save_game()
                     elif event.key == pygame.K_RIGHT and self.music:
                         self.music.set_volume(round(min(1.0, self.music.volume + 0.1), 1))
                         if self.sfx: self.sfx.play('cursor')
+                        self._save_game()
                 elif self.settings_cursor == 1:  # Music on/off
                     if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE,
                                      pygame.K_LEFT, pygame.K_RIGHT):
                         if self.music:
                             self.music.set_enabled(not self.music.enabled)
                         if self.sfx: self.sfx.play('confirm')
+                        self._save_game()
                 elif self.settings_cursor == 2:  # SFX on/off
                     if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE,
                                      pygame.K_LEFT, pygame.K_RIGHT):
                         if self.sfx:
                             new_state = not self.sfx.enabled
                             self.sfx.set_enabled(new_state)
-                            if new_state:  # play a sound to confirm it's back on
+                            if new_state:
                                 self.sfx.play('confirm')
+                        self._save_game()
                 if event.key in (pygame.K_x, pygame.K_ESCAPE):
                     self.state = self.STATE_MENU
                     if self.sfx: self.sfx.play('back')
