@@ -1,2 +1,4 @@
 rodentmon_save_*.json
 crash.log
+__pycache__/
+*.pyc
