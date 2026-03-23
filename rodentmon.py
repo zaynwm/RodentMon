@@ -2478,7 +2478,7 @@ class Game:
         ht2 = self.small_font.render(hint, True, GREY)
         self.screen.blit(ht2, (SCREEN_W // 2 - ht2.get_width() // 2, SCREEN_H - 24))
 
-    def _draw_settings(self):
+    def _draw_settings(self, interactive=True):
         # Panel over the content area (left side, same as party/badges)
         menu_w = 200
         panel = pygame.Rect(10, 10, SCREEN_W - menu_w - 30, SCREEN_H - 20)
@@ -2488,9 +2488,9 @@ class Game:
         title = self.font.render("SETTINGS", True, BLACK)
         self.screen.blit(title, (panel.centerx - title.get_width() // 2, panel.y + 12))
 
-        music_vol  = self.music.volume  if self.music else 1.0
-        music_on   = self.music.enabled if self.music else True
-        sfx_on     = self.sfx.enabled   if self.sfx   else True
+        music_vol = self.music.volume  if self.music else 1.0
+        music_on  = self.music.enabled if self.music else True
+        sfx_on    = self.sfx.enabled   if self.sfx   else True
 
         rows = [
             ("Music Volume", 'slider', music_vol),
@@ -2498,25 +2498,22 @@ class Game:
             ("Sound Effects", 'toggle', sfx_on),
         ]
 
-        row_h = 58
+        row_h   = 58
         start_y = panel.y + 50
-        bar_w = 160   # total width of volume bar area
+        seg_w, gap = 12, 2
 
         for i, (label, kind, value) in enumerate(rows):
-            y = start_y + i * row_h
-            selected = (i == self.settings_cursor)
-            label_col = BLACK
+            y        = start_y + i * row_h
+            selected = interactive and (i == self.settings_cursor)
 
-            # Row highlight
             if selected:
                 pygame.draw.rect(self.screen, LIGHT_GREEN,
                                  (panel.x + 4, y - 4, panel.w - 8, row_h - 4),
                                  border_radius=4)
 
-            lbl = self.font.render(label, True, label_col)
+            lbl = self.font.render(label, True, BLACK)
             self.screen.blit(lbl, (panel.x + 24, y + 2))
 
-            # Cursor arrow
             if selected:
                 pygame.draw.polygon(self.screen, BLACK,
                     [(panel.x + 10, y + 6),
@@ -2524,41 +2521,32 @@ class Game:
                      (panel.x + 20, y + 12)])
 
             if kind == 'slider':
-                # ◄  ■■■■■░░░░░  ►  50%
-                bx = panel.x + 24
-                by = y + 26
-                steps = 10
+                bx, by = panel.x + 24, y + 26
+                steps  = 10
                 filled = round(value * steps)
-                seg_w = 12
-                gap = 2
-                left_arr = self.small_font.render("<", True, DARK_GREY if value <= 0 else BLACK)
-                self.screen.blit(left_arr, (bx, by))
+                arr_col = DARK_GREY if not interactive else BLACK
+                self.screen.blit(self.small_font.render("<", True, DARK_GREY if value <= 0 else arr_col), (bx, by))
                 bx += 14
                 for s in range(steps):
                     col = DARK_GREEN if s < filled else GREY
                     pygame.draw.rect(self.screen, col, (bx + s * (seg_w + gap), by + 1, seg_w, 10))
                 bx += steps * (seg_w + gap) + 4
-                right_arr = self.small_font.render(">", True, DARK_GREY if value >= 1 else BLACK)
-                self.screen.blit(right_arr, (bx, by))
+                self.screen.blit(self.small_font.render(">", True, DARK_GREY if value >= 1 else arr_col), (bx, by))
                 pct = self.small_font.render(f"{round(value * 100)}%", True, DARK_GREY)
                 self.screen.blit(pct, (bx + 14, by))
 
             else:  # toggle
                 on_col  = DARK_GREEN if value else GREY
-                off_col = GREY if value else RED
-                on_txt  = self.font.render("ON",  True, WHITE if value else GREY)
-                off_txt = self.font.render("OFF", True, WHITE if not value else GREY)
-                tx = panel.x + 24
-                ty = y + 26
+                off_col = GREY       if value else RED
+                tx, ty  = panel.x + 24, y + 26
                 pygame.draw.rect(self.screen, on_col,  (tx,      ty, 44, 20), border_radius=4)
                 pygame.draw.rect(self.screen, off_col, (tx + 48, ty, 44, 20), border_radius=4)
-                self.screen.blit(on_txt,  (tx +  8, ty + 2))
-                self.screen.blit(off_txt, (tx + 52, ty + 2))
+                self.screen.blit(self.font.render("ON",  True, WHITE if value     else GREY), (tx +  8, ty + 2))
+                self.screen.blit(self.font.render("OFF", True, WHITE if not value else GREY), (tx + 52, ty + 2))
 
-        # Controls hint
-        hint = self.small_font.render(
-            "↑↓ Select   ◄► / Z Adjust   Esc Back", True, GREY)
-        self.screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 22))
+        if interactive:
+            hint = self.small_font.render("↑↓ Select   ◄► / Z Adjust   Esc Back", True, GREY)
+            self.screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 22))
 
     def _draw_starter_select(self):
         self.screen.fill(DARK_GREEN)
@@ -2722,6 +2710,9 @@ class Game:
 
             money_t = self.font.render(f"Money: ${self.money}", True, BLACK)
             self.screen.blit(money_t, (20, 140))
+
+        elif self.menu_cursor == 3:  # Settings preview (read-only)
+            self._draw_settings(interactive=False)
 
 
 # ---------------------------------------------------------------------------
