@@ -1397,7 +1397,20 @@ class Battle:
                         self._set_messages(msgs)
                         self.state = self.STATE_EXECUTING
                     else:
-                        self._set_messages(["Can't run from a trainer battle!"])
+                        # Trainer battle: can flee but the trainer gets a parting shot
+                        pr = self._player_rodent()
+                        er = self._enemy_rodent()
+                        msgs = [f"You fled from {self.trainer_name}!"]
+                        move_name = random.choice(er.moves)
+                        move_data = MOVES[move_name]
+                        msgs.append(f"{er.nickname} used {move_name} as you ran!")
+                        if move_data["power"] > 0 and random.randint(1, 100) <= move_data["acc"]:
+                            dmg, _ = self._calc_damage(er, pr, move_data)
+                            pr.hp = max(0, pr.hp - dmg)
+                            if pr.hp <= 0:
+                                msgs.append(f"{pr.nickname} fainted!")
+                        self.result = "run"
+                        self._set_messages(msgs)
                         self.state = self.STATE_EXECUTING
             elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                 self._sfx('back')
