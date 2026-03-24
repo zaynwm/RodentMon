@@ -1741,6 +1741,7 @@ class Game:
     STATE_MENU = 4
     STATE_SLOT_SELECT = 5
     STATE_SETTINGS = 6
+    STATE_MERGE = 7
 
     NUM_SAVE_SLOTS = 3
 
@@ -1820,6 +1821,10 @@ class Game:
 
         # Settings
         self.settings_cursor = 0    # 0=music vol, 1=music on/off, 2=sfx on/off
+
+        # Merge
+        self.merge_cursor = 0
+        self.merge_first  = None    # index of first selected rodent, or None
 
         # Save slots
         self.save_slot = None        # active slot number (1-3)
@@ -2224,32 +2229,85 @@ class Game:
         elif self.state == self.STATE_MENU:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    self.menu_cursor = (self.menu_cursor - 1) % 5
+                    self.menu_cursor = (self.menu_cursor - 1) % 6
                     if self.sfx: self.sfx.play('cursor')
                 elif event.key == pygame.K_DOWN:
-                    self.menu_cursor = (self.menu_cursor + 1) % 5
+                    self.menu_cursor = (self.menu_cursor + 1) % 6
                     if self.sfx: self.sfx.play('cursor')
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
                     if self.menu_cursor == 0:  # Party
                         pass
-                    elif self.menu_cursor == 1:  # Save
+                    elif self.menu_cursor == 1:  # Merge
+                        self.merge_cursor = 0
+                        self.merge_first = None
+                        self.state = self.STATE_MERGE
+                        if self.sfx: self.sfx.play('confirm')
+                    elif self.menu_cursor == 2:  # Save
                         self._save_game()
                         self.state = self.STATE_OVERWORLD
                         slot_label = f" (Slot {self.save_slot})" if self.save_slot else ""
                         self.textbox.show(f"Game saved{slot_label}!")
                         if self.sfx: self.sfx.play('save')
-                    elif self.menu_cursor == 2:  # Badges
+                    elif self.menu_cursor == 3:  # Badges
                         pass
-                    elif self.menu_cursor == 3:  # Settings
+                    elif self.menu_cursor == 4:  # Settings
                         self.state = self.STATE_SETTINGS
                         self.settings_cursor = 0
                         if self.sfx: self.sfx.play('confirm')
-                    elif self.menu_cursor == 4:  # Back
+                    elif self.menu_cursor == 5:  # Back
                         self.state = self.STATE_OVERWORLD
                         if self.sfx: self.sfx.play('back')
                 elif event.key in (pygame.K_x, pygame.K_ESCAPE):
                     self.state = self.STATE_OVERWORLD
                     if self.sfx: self.sfx.play('back')
+
+        elif self.state == self.STATE_MERGE:
+            if event.type == pygame.KEYDOWN:
+                n = len(self.party)
+                if event.key == pygame.K_UP:
+                    self.merge_cursor = (self.merge_cursor - 1) % n
+                    if self.sfx: self.sfx.play('cursor')
+                elif event.key == pygame.K_DOWN:
+                    self.merge_cursor = (self.merge_cursor + 1) % n
+                    if self.sfx: self.sfx.play('cursor')
+                elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                    if self.merge_first is None:
+                        # Select first rodent
+                        self.merge_first = self.merge_cursor
+                        if self.sfx: self.sfx.play('confirm')
+                    elif self.merge_cursor == self.merge_first:
+                        # Clicked same rodent — deselect
+                        self.merge_first = None
+                        if self.sfx: self.sfx.play('back')
+                    else:
+                        r1 = self.party[self.merge_first]
+                        r2 = self.party[self.merge_cursor]
+                        if r1.species == r2.species and r1.level == r2.level:
+                            # Perform merge: level r1 up, remove r2
+                            r1.gain_xp(r1.xp_to_next - r1.xp)
+                            # Remove higher index first to preserve lower index
+                            idx_a = max(self.merge_first, self.merge_cursor)
+                            idx_b = min(self.merge_first, self.merge_cursor)
+                            self.party.pop(idx_a)
+                            # r1 may now be at idx_b
+                            self.merge_first = None
+                            self.merge_cursor = min(self.merge_cursor, len(self.party) - 1)
+                            self._save_game()
+                            self.state = self.STATE_OVERWORLD
+                            self.textbox.show(
+                                f"Merge complete!\n{r1.nickname} is now Lv.{r1.level}!")
+                            if self.sfx: self.sfx.play('level_up')
+                        else:
+                            # Incompatible — flash feedback and deselect
+                            self.merge_first = None
+                            if self.sfx: self.sfx.play('back')
+                elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                    if self.merge_first is not None:
+                        self.merge_first = None
+                        if self.sfx: self.sfx.play('back')
+                    else:
+                        self.state = self.STATE_MENU
+                        if self.sfx: self.sfx.play('back')
 
         elif self.state == self.STATE_SETTINGS:
             if event.type == pygame.KEYDOWN:
@@ -2376,6 +2434,9 @@ class Game:
             self._draw_overworld()
             self._draw_pause_menu()
             self._draw_settings()
+        elif self.state == self.STATE_MERGE:
+            self._draw_overworld()
+            self._draw_merge()
 
         if self.transitioning:
             overlay = pygame.Surface((SCREEN_W, SCREEN_H))
@@ -2573,6 +2634,74 @@ class Game:
             hint = self.small_font.render("↑↓ Select   ◄► / Z Adjust   Esc Back", True, GREY)
             self.screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 22))
 
+    def _draw_merge(self):
+        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 120))
+        self.screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(30, 15, SCREEN_W - 60, SCREEN_H - 30)
+        pygame.draw.rect(self.screen, WHITE, panel)
+        pygame.draw.rect(self.screen, BLACK, panel, 2)
+
+        if self.merge_first is None:
+            heading = "MERGE  —  Select first rodent"
+        else:
+            r1 = self.party[self.merge_first]
+            heading = f"MERGE  —  Select second {r1.species} (Lv.{r1.level})"
+        ht = self.font.render(heading, True, BLACK)
+        self.screen.blit(ht, (panel.centerx - ht.get_width() // 2, panel.y + 8))
+
+        row_h = min(62, (panel.h - 50) // max(len(self.party), 1))
+        for i, r in enumerate(self.party):
+            y        = panel.y + 38 + i * row_h
+            selected = (i == self.merge_cursor)
+            is_first = (i == self.merge_first)
+
+            # Eligibility for second pick
+            if self.merge_first is not None and not is_first:
+                r1      = self.party[self.merge_first]
+                eligible = (r.species == r1.species and r.level == r1.level)
+            else:
+                eligible = True
+
+            # Row background
+            if is_first:
+                bg = YELLOW
+            elif selected and eligible:
+                bg = LIGHT_GREEN
+            elif not eligible:
+                bg = (220, 220, 220)
+            else:
+                bg = (245, 245, 245)
+            pygame.draw.rect(self.screen, bg,
+                             (panel.x + 4, y - 2, panel.w - 8, row_h - 4),
+                             border_radius=4)
+
+            # Cursor arrow
+            if selected:
+                pygame.draw.polygon(self.screen, BLACK,
+                    [(panel.x + 10, y + 8),
+                     (panel.x + 10, y + 20),
+                     (panel.x + 20, y + 14)])
+
+            draw_rodent_sprite(self.screen, r.species, panel.x + 26, y - 2, 44)
+            name_col = BLACK if eligible or is_first else DARK_GREY
+            name = self.font.render(
+                f"{r.nickname}  Lv.{r.level}  [{r.species}]", True, name_col)
+            self.screen.blit(name, (panel.x + 76, y + 2))
+            stats = self.small_font.render(
+                f"HP {r.hp}/{r.max_hp}   ATK {r.effective_atk()}   DEF {r.effective_def()}",
+                True, DARK_GREY)
+            self.screen.blit(stats, (panel.x + 76, y + 22))
+
+            if is_first:
+                tag = self.small_font.render("FIRST", True, DARK_GREY)
+                self.screen.blit(tag, (panel.right - tag.get_width() - 12, y + 10))
+
+        hint = self.small_font.render(
+            "[Z] Select   [Esc] Deselect / Back", True, GREY)
+        self.screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 18))
+
     def _draw_starter_select(self):
         self.screen.fill(DARK_GREEN)
 
@@ -2687,14 +2816,14 @@ class Game:
         overlay.fill((0, 0, 0, 100))
         self.screen.blit(overlay, (0, 0))
 
-        menu_w, menu_h = 200, 175
+        menu_w, menu_h = 200, 205
         mx = SCREEN_W - menu_w - 10
         my = 10
         menu_rect = pygame.Rect(mx, my, menu_w, menu_h)
         pygame.draw.rect(self.screen, WHITE, menu_rect)
         pygame.draw.rect(self.screen, BLACK, menu_rect, 3)
 
-        options = ["RODENTS", "SAVE", "BADGES", "SETTINGS", "BACK"]
+        options = ["RODENTS", "MERGE", "SAVE", "BADGES", "SETTINGS", "BACK"]
         for i, opt in enumerate(options):
             y = my + 10 + i * 30
             color = BLACK
@@ -2736,7 +2865,7 @@ class Game:
             money_t = self.font.render(f"Money: ${self.money}", True, BLACK)
             self.screen.blit(money_t, (20, 140))
 
-        elif self.menu_cursor == 3:  # Settings preview (read-only)
+        elif self.menu_cursor == 4:  # Settings preview (read-only)
             self._draw_settings(interactive=False)
 
 
