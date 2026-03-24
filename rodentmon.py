@@ -2851,7 +2851,54 @@ class Game:
                 type_t = self.small_font.render(f"Type: {r.type}  Moves: {', '.join(r.moves)}", True, DARK_GREY)
                 self.screen.blit(type_t, (75, y + 36))
 
-        elif self.menu_cursor == 2:  # Badges
+        elif self.menu_cursor == 2:  # Save — slot preview
+            title = self.font.render("Save Game:", True, BLACK)
+            self.screen.blit(title, (20, 20))
+
+            content_rect = pygame.Rect(10, 10, SCREEN_W - 200 - 30, SCREEN_H - 20)
+            card_w = content_rect.width - 24
+            card_h = 76
+            card_x = content_rect.x + 12
+            top_y  = 48
+
+            for i in range(self.NUM_SAVE_SLOTS):
+                slot = i + 1
+                cy   = top_y + i * (card_h + 8)
+                info = self._slot_info(slot)
+                active = (slot == self.save_slot)
+
+                border_col = YELLOW if active else GREY
+                bg_col     = (30, 50, 80) if active else (240, 240, 248)
+                pygame.draw.rect(self.screen, bg_col,    (card_x, cy, card_w, card_h), border_radius=5)
+                pygame.draw.rect(self.screen, border_col, (card_x, cy, card_w, card_h), 2, border_radius=5)
+
+                slot_lbl = self.font.render(f"SLOT {slot}", True, YELLOW if active else BLACK)
+                self.screen.blit(slot_lbl, (card_x + 10, cy + 6))
+
+                if active:
+                    tag = self.small_font.render("◀ CURRENT", True, YELLOW)
+                    self.screen.blit(tag, (card_x + card_w - tag.get_width() - 10, cy + 8))
+
+                if info:
+                    map_label  = self._MAP_LABELS.get(info["map"], info["map"])
+                    badges_str = f"Badges: {info['badges']}"
+                    party_str  = "  ".join(info["party"][:6]) or "No rodents"
+                    saved_str  = info["saved_at"]
+
+                    loc = self.small_font.render(f"{map_label}  ·  {badges_str}", True, LIGHT_BLUE if active else DARK_GREY)
+                    self.screen.blit(loc, (card_x + 10, cy + 26))
+
+                    pty = self.small_font.render(party_str, True, LIGHT_GREEN if active else DARK_GREY)
+                    self.screen.blit(pty, (card_x + 10, cy + 42))
+
+                    sav = self.small_font.render(f"Saved: {saved_str}", True, GREY)
+                    self.screen.blit(sav, (card_x + card_w - sav.get_width() - 10, cy + 58))
+                else:
+                    empty = self.font.render("— EMPTY —", True, DARK_GREY)
+                    self.screen.blit(empty, (card_x + card_w // 2 - empty.get_width() // 2,
+                                             cy + card_h // 2 - empty.get_height() // 2))
+
+        elif self.menu_cursor == 3:  # Badges
             title = self.font.render("Badges:", True, BLACK)
             self.screen.blit(title, (20, 20))
             if self.badges:
