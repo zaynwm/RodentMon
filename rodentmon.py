@@ -176,6 +176,18 @@ TYPE_COLORS = {
     "Dark":   (100, 60, 140),
 }
 
+# Rodent Shop inventory  (species, level, price)
+SHOP_ITEMS = [
+    {"species": "Mouse",         "level":  5, "price":  80},
+    {"species": "Gerbil",        "level":  5, "price": 100},
+    {"species": "Bat",           "level":  5, "price": 110},
+    {"species": "Squirrel",      "level":  5, "price": 120},
+    {"species": "Rat",           "level": 10, "price": 300},
+    {"species": "Desert Gerbil", "level": 10, "price": 380},
+    {"species": "Giant Squirrel","level": 10, "price": 420},
+    {"species": "Vampire Bat",   "level": 10, "price": 480},
+]
+
 # Wild encounter tables per area
 ENCOUNTER_TABLES = {
     "route1": [("Mouse", 3, 6, 50), ("Squirrel", 3, 5, 30), ("Bat", 3, 5, 20)],
@@ -501,6 +513,16 @@ def make_town2():
     tiles[13][5] = 'S'
     tiles[13][22] = 'S'
 
+    # Rodent Shop building (lower-right, below main path)
+    for x in range(17, 23):
+        tiles[15][x] = 'R'
+        tiles[16][x] = 'H'
+        tiles[17][x] = 'H'
+        tiles[18][x] = 'H'
+    tiles[18][19] = 'D'
+    tiles[18][20] = 'D'
+    tiles[14][19] = 'S'   # sign on main path pointing to shop
+
     return {
         "name": "Burrow Town",
         "tiles": tiles, "w": w, "h": h,
@@ -512,13 +534,16 @@ def make_town2():
             {"x": 15, "y": 0, "dest": "route2", "dx": 15, "dy": 23},
         ],
         "signs": {
-            (5, 13): "Burrow Town\nHome of the first Gym!",
+            (5, 13):  "Burrow Town\nHome of the first Gym!",
             (22, 13): "Burrow Town Gym\nLeader: Sandy",
+            (19, 14): "Rodent Shop\nBuy rodents with your prize money!",
         },
         "doors": {
-            (8, 11): {"action": "enter", "dest": "interior_center_town2", "dx": 5, "dy": 6},
-            (9, 11): {"action": "enter", "dest": "interior_center_town2", "dx": 5, "dy": 6},
-            (21, 11): {"action": "enter", "dest": "interior_gym1", "dx": 5, "dy": 8},
+            (8, 11):  {"action": "enter", "dest": "interior_center_town2", "dx": 5, "dy": 6},
+            (9, 11):  {"action": "enter", "dest": "interior_center_town2", "dx": 5, "dy": 6},
+            (21, 11): {"action": "enter", "dest": "interior_gym1",         "dx": 5, "dy": 8},
+            (19, 18): {"action": "enter", "dest": "interior_shop",         "dx": 5, "dy": 6},
+            (20, 18): {"action": "enter", "dest": "interior_shop",         "dx": 5, "dy": 6},
         },
         "spawn": (14, 13),
     }
@@ -717,6 +742,38 @@ def make_interior_gym(gym_id, return_map, return_dx, return_dy):
              "msg": f"{gym['leader']}: Come back\nwhen you're ready!"},
         ],
         "spawn": (5, 8),
+        "is_interior": True,
+    }
+
+
+def make_interior_shop():
+    """Rodent Shop interior."""
+    layout = [
+        "WWWWWWWWWWWW",
+        "WFKKKKKKFFFW",
+        "WFNFFFFFKFFW",
+        "WFFFFFFFKFFW",
+        "WFFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WWWWWGWWWWWW",
+    ]
+    h = len(layout)
+    w = len(layout[0])
+    tiles = [[c for c in row] for row in layout]
+    return {
+        "name": "Rodent Shop",
+        "tiles": tiles, "w": w, "h": h,
+        "encounters": None,
+        "exits": [{"x": 5, "y": 7, "dest": "town2", "dx": 19, "dy": 19}],
+        "signs": {},
+        "doors": {},
+        "npcs": [
+            {"name": "Shopkeeper", "pos": (2, 2), "color": (255, 200, 80),
+             "action": "shop",
+             "msg": "Welcome to the Rodent Shop!"},
+        ],
+        "spawn": (5, 6),
         "is_interior": True,
     }
 
@@ -1756,6 +1813,7 @@ class Game:
     STATE_SLOT_SELECT = 5
     STATE_SETTINGS = 6
     STATE_MERGE = 7
+    STATE_SHOP  = 8
 
     NUM_SAVE_SLOTS = 3
 
@@ -1808,6 +1866,7 @@ class Game:
             "interior_center_town3": make_interior_center("town3", 8, 12),
             "interior_gym1": make_interior_gym(1, "town2", 21, 12),
             "interior_gym2": make_interior_gym(2, "town3", 21, 12),
+            "interior_shop": make_interior_shop(),
         }
 
         self.current_map_name = "hometown"
@@ -1839,6 +1898,7 @@ class Game:
         # Merge
         self.merge_cursor = 0
         self.merge_first  = None    # index of first selected rodent, or None
+        self.shop_cursor  = 0
 
         # Save slots
         self.save_slot = None        # active slot number (1-3)
@@ -1940,6 +2000,9 @@ class Game:
                             self.state = self.STATE_STARTER
                         else:
                             self.textbox.show(npc["msg"])
+                    elif action == "shop":
+                        self.shop_cursor = 0
+                        self.state = self.STATE_SHOP
                     elif action == "gym":
                         if not self.party:
                             self.textbox.show("You don't have any rodents!\nVisit Prof. Whiskers' Lab first.")
@@ -2323,6 +2386,39 @@ class Game:
                         self.state = self.STATE_MENU
                         if self.sfx: self.sfx.play('back')
 
+        elif self.state == self.STATE_SHOP:
+            if self.textbox.active:
+                if event.type == pygame.KEYDOWN and event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                    self.textbox.advance()
+                    if self.sfx: self.sfx.play('text')
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.shop_cursor = (self.shop_cursor - 1) % len(SHOP_ITEMS)
+                    if self.sfx: self.sfx.play('cursor')
+                elif event.key == pygame.K_DOWN:
+                    self.shop_cursor = (self.shop_cursor + 1) % len(SHOP_ITEMS)
+                    if self.sfx: self.sfx.play('cursor')
+                elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                    item = SHOP_ITEMS[self.shop_cursor]
+                    if len(self.party) >= 6:
+                        self.textbox.show("Your party is full!\nRelease a rodent first.")
+                        if self.sfx: self.sfx.play('back')
+                    elif self.money < item["price"]:
+                        self.textbox.show(f"That costs ${item['price']}.\nYou only have ${self.money}.")
+                        if self.sfx: self.sfx.play('back')
+                    else:
+                        self.money -= item["price"]
+                        new_r = Rodent(item["species"], item["level"])
+                        self.party.append(new_r)
+                        if self.sfx: self.sfx.play('confirm')
+                        self.textbox.show(
+                            f"{new_r.nickname} joined your party!\n${self.money} remaining.")
+                        self._save_game()
+                elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                    self.state = self.STATE_OVERWORLD
+                    if self.sfx: self.sfx.play('back')
+
         elif self.state == self.STATE_SETTINGS:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -2451,6 +2547,9 @@ class Game:
         elif self.state == self.STATE_MERGE:
             self._draw_overworld()
             self._draw_merge()
+        elif self.state == self.STATE_SHOP:
+            self._draw_overworld()
+            self._draw_shop()
 
         if self.transitioning:
             overlay = pygame.Surface((SCREEN_W, SCREEN_H))
@@ -2928,6 +3027,65 @@ class Game:
 
         elif self.menu_cursor == 4:  # Settings preview (read-only)
             self._draw_settings(interactive=False)
+
+    def _draw_shop(self):
+        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 130))
+        self.screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(20, 10, SCREEN_W - 40, SCREEN_H - 20)
+        pygame.draw.rect(self.screen, WHITE, panel)
+        pygame.draw.rect(self.screen, BLACK, panel, 3)
+
+        title = self.font.render("RODENT SHOP", True, BLACK)
+        self.screen.blit(title, (panel.x + 12, panel.y + 10))
+
+        money_t = self.font.render(f"${self.money}", True, DARK_GREY)
+        self.screen.blit(money_t, (panel.right - money_t.get_width() - 12, panel.y + 10))
+
+        card_w = panel.width - 24
+        card_h = 54
+        top_y = panel.y + 40
+
+        for i, item in enumerate(SHOP_ITEMS):
+            cy = top_y + i * (card_h + 4)
+            selected = (i == self.shop_cursor)
+            can_afford = self.money >= item["price"]
+
+            bg = (30, 50, 80) if selected else (245, 245, 255)
+            border = YELLOW if selected else GREY
+            pygame.draw.rect(self.screen, bg,     (panel.x + 12, cy, card_w, card_h), border_radius=4)
+            pygame.draw.rect(self.screen, border, (panel.x + 12, cy, card_w, card_h), 2, border_radius=4)
+
+            if selected:
+                pygame.draw.polygon(self.screen, YELLOW,
+                    [(panel.x + 4, cy + card_h // 2 - 5),
+                     (panel.x + 4, cy + card_h // 2 + 5),
+                     (panel.x + 11, cy + card_h // 2)])
+
+            species = item["species"]
+            sp_data = SPECIES[species]
+            name_col = WHITE if selected else BLACK
+            name_t = self.font.render(f"{species}  Lv.{item['level']}", True, name_col)
+            self.screen.blit(name_t, (panel.x + 22, cy + 6))
+
+            type_color = TYPE_COLORS.get(sp_data["type"], GREY)
+            pygame.draw.rect(self.screen, type_color, (panel.x + 22, cy + 30, 44, 14))
+            type_t = self.small_font.render(sp_data["type"], True, WHITE)
+            self.screen.blit(type_t, (panel.x + 24, cy + 31))
+
+            desc_t = self.small_font.render(sp_data["desc"], True, LIGHT_BLUE if selected else DARK_GREY)
+            self.screen.blit(desc_t, (panel.x + 75, cy + 33))
+
+            price_col = (LIGHT_GREEN if can_afford else RED) if selected else (DARK_GREY if can_afford else RED)
+            price_t = self.font.render(f"${item['price']}", True, price_col)
+            self.screen.blit(price_t, (panel.x + card_w - price_t.get_width() + 4, cy + 6))
+
+        hint = self.small_font.render("[Z] Buy   [Esc] Leave", True, GREY)
+        self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, panel.bottom - 22))
+
+        if self.textbox.active:
+            self.textbox.draw(self.screen)
 
 
 # ---------------------------------------------------------------------------
