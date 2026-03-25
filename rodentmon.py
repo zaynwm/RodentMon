@@ -1499,6 +1499,19 @@ class Battle:
             xp_msgs = pr.gain_xp(xp_gain)
             msgs = [f"{pr.nickname} gained {xp_gain} XP!"] + xp_msgs
 
+            # Move copy: same-type active rodent learns an unknown enemy move
+            if pr.type == er.type:
+                new_moves = [m for m in er.moves if m not in pr.moves]
+                if new_moves:
+                    move_to_learn = new_moves[0]
+                    if len(pr.moves) < 4:
+                        pr.moves.append(move_to_learn)
+                        msgs.append(f"{pr.nickname} learned {move_to_learn} by watching!")
+                    else:
+                        old = pr.moves[0]
+                        pr.moves[0] = move_to_learn
+                        msgs.append(f"{pr.nickname} learned {move_to_learn} (forgot {old})!")
+
             next_enemy = None
             for i in range(len(self.enemy_party)):
                 if self.enemy_party[i].hp > 0:
