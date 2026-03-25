@@ -1508,8 +1508,9 @@ class Battle:
                         pr.moves.append(move_to_learn)
                         msgs.append(f"{pr.nickname} learned {move_to_learn} by watching!")
                     else:
-                        old = pr.moves[0]
-                        pr.moves[0] = move_to_learn
+                        weakest_idx = min(range(len(pr.moves)), key=lambda i: MOVES[pr.moves[i]]["power"])
+                        old = pr.moves[weakest_idx]
+                        pr.moves[weakest_idx] = move_to_learn
                         msgs.append(f"{pr.nickname} learned {move_to_learn} (forgot {old})!")
 
             next_enemy = None
