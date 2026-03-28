@@ -197,6 +197,8 @@ ENCOUNTER_TABLES = {
     "route4": [("Rat", 14, 20, 20), ("Desert Gerbil", 18, 22, 15),
                ("Giant Squirrel", 20, 24, 15), ("Vampire Bat", 17, 22, 15),
                ("Mouse", 12, 16, 35)],
+    "route5": [("Vampire Bat", 24, 32, 25), ("Giant Squirrel", 25, 33, 25),
+               ("Desert Gerbil", 24, 31, 25), ("Rat", 22, 29, 25)],
 }
 
 # ---------------------------------------------------------------------------
@@ -382,6 +384,13 @@ def make_hometown():
         for y in range(17, 20):
             tiles[y][x] = '~'
 
+    # Neighbour's house (lower-right, south of main path)
+    for x in range(18, 24):
+        tiles[15][x] = 'R'
+        tiles[16][x] = 'H'
+        tiles[17][x] = 'H'
+    tiles[17][20] = 'D'
+
     return {
         "name": "Rodent Village",
         "tiles": tiles, "w": w, "h": h,
@@ -391,14 +400,15 @@ def make_hometown():
             {"x": 15, "y": 0, "dest": "route1", "dx": 15, "dy": 23},
         ],
         "signs": {
-            (7, 11): "Welcome to Rodent Village!\nYour adventure begins here.",
+            (7,  11): "Welcome to Rodent Village!\nYour adventure begins here.",
             (21, 11): "Prof. Whiskers' Lab ->\nGet your first rodent!",
         },
         "doors": {
-            (7, 6): {"action": "enter", "dest": "interior_house", "dx": 4, "dy": 6},
-            (21, 7): {"action": "enter", "dest": "interior_lab", "dx": 5, "dy": 8},
-            (12, 19): {"action": "enter", "dest": "interior_center_hometown", "dx": 5, "dy": 6},
-            (13, 19): {"action": "enter", "dest": "interior_center_hometown", "dx": 5, "dy": 6},
+            (7,  6):  {"action": "enter", "dest": "interior_house",            "dx": 4, "dy": 6},
+            (21, 7):  {"action": "enter", "dest": "interior_lab",               "dx": 5, "dy": 8},
+            (12, 19): {"action": "enter", "dest": "interior_center_hometown",   "dx": 5, "dy": 6},
+            (13, 19): {"action": "enter", "dest": "interior_center_hometown",   "dx": 5, "dy": 6},
+            (20, 17): {"action": "enter", "dest": "interior_friend_house",      "dx": 4, "dy": 6},
         },
         "spawn": (14, 13),
     }
@@ -589,6 +599,14 @@ def make_town3():
     tiles[h-1][15] = 'P'
     tiles[13][5] = 'S'
 
+    # Research Lab (upper-left, above heal center)
+    for x in range(3, 10):
+        tiles[3][x] = 'R'
+        tiles[4][x] = 'H'
+        tiles[5][x] = 'H'
+        tiles[6][x] = 'H'
+    tiles[6][6] = 'D'
+
     return {
         "name": "Nest City",
         "tiles": tiles, "w": w, "h": h,
@@ -596,15 +614,17 @@ def make_town3():
         "exits": [
             {"x": 14, "y": h-1, "dest": "route3", "dx": 14, "dy": 1},
             {"x": 15, "y": h-1, "dest": "route3", "dx": 15, "dy": 1},
-            {"x": 14, "y": 0, "dest": "route4", "dx": 14, "dy": 23},
-            {"x": 15, "y": 0, "dest": "route4", "dx": 15, "dy": 23},
+            {"x": 14, "y": 0,   "dest": "route4", "dx": 14, "dy": 23},
+            {"x": 15, "y": 0,   "dest": "route4", "dx": 15, "dy": 23},
         ],
         "signs": {
-            (5, 13): "Nest City\nThe final challenge awaits!",
+            (5,  13): "Nest City\nThe final challenge awaits!",
+            (6,  7):  "Rodent Research Lab\nLearn about all species!",
         },
         "doors": {
-            (8, 11): {"action": "enter", "dest": "interior_center_town3", "dx": 5, "dy": 6},
-            (21, 11): {"action": "enter", "dest": "interior_gym2", "dx": 5, "dy": 8},
+            (8,  11): {"action": "enter", "dest": "interior_center_town3",  "dx": 5, "dy": 6},
+            (21, 11): {"action": "enter", "dest": "interior_gym2",           "dx": 5, "dy": 8},
+            (6,  6):  {"action": "enter", "dest": "interior_research",       "dx": 5, "dy": 6},
         },
         "spawn": (14, 13),
     }
@@ -713,7 +733,7 @@ def make_interior_center(return_map, return_dx, return_dy):
 def make_interior_gym(gym_id, return_map, return_dx, return_dy):
     """Gym interior."""
     gym = GYM_DATA[gym_id]
-    leader_color = SAND if gym_id == 1 else PURPLE
+    leader_color = SAND if gym_id == 1 else GREEN if gym_id == 3 else PURPLE
     layout = [
         "WWWWWWWWWWWW",
         "WFFFFFFFFFFW",
@@ -778,6 +798,180 @@ def make_interior_shop():
     }
 
 
+def make_interior_dojo():
+    """Battle Dojo — rematch available, no badge."""
+    layout = [
+        "WWWWWWWWWWWW",
+        "WAAAAAAAAAAW",
+        "WAAAAAAAAAAW",
+        "WANAAAAAAAAW",
+        "WAAAAAAAAAAW",
+        "WAAAAAAAAAAW",
+        "WFFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WWWWWGWWWWWW",
+    ]
+    h, w = len(layout), len(layout[0])
+    tiles = [[c for c in row] for row in layout]
+    return {
+        "name": "Battle Dojo",
+        "tiles": tiles, "w": w, "h": h,
+        "encounters": None,
+        "exits": [{"x": 5, "y": 9, "dest": "town4", "dx": 6, "dy": 8}],
+        "signs": {},
+        "doors": {},
+        "npcs": [
+            {"name": "Dojo Master Ken", "pos": (2, 3), "color": RED,
+             "action": "dojo",
+             "party": [("Rat", 30), ("Giant Squirrel", 33), ("Vampire Bat", 35)],
+             "msg": "Welcome to the Dojo!\nI am Master Ken.\nProve your strength!",
+             "reward": 2500},
+        ],
+        "spawn": (5, 8),
+        "is_interior": True,
+    }
+
+
+def make_interior_friend_house():
+    """Neighbour's house — gives gameplay tips."""
+    layout = [
+        "WWWWWWWWWW",
+        "WFFBFFBFFW",
+        "WFFFFFFKFW",
+        "WFNFFFFKFW",
+        "WFFFFFFFFW",
+        "WFFFFFFFFW",
+        "WFFFFFFFFW",
+        "WWWWGWWWWW",
+    ]
+    h, w = len(layout), len(layout[0])
+    tiles = [[c for c in row] for row in layout]
+    return {
+        "name": "Neighbour's House",
+        "tiles": tiles, "w": w, "h": h,
+        "encounters": None,
+        "exits": [{"x": 4, "y": 7, "dest": "hometown", "dx": 20, "dy": 18}],
+        "signs": {},
+        "doors": {},
+        "npcs": [
+            {"name": "Neighbour", "pos": (2, 3), "color": ORANGE,
+             "msg": "Tip: Defeat rodents of\nyour type to copy their\nbest moves!"},
+        ],
+        "spawn": (4, 6),
+        "is_interior": True,
+    }
+
+
+def make_interior_research():
+    """Rodent Research Lab — species info NPC."""
+    layout = [
+        "WWWWWWWWWWWW",
+        "WFLLLLLLLLFW",
+        "WFLLLLLLLLFW",
+        "WNFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WFFFFFFFFFFW",
+        "WWWWWGWWWWWW",
+    ]
+    h, w = len(layout), len(layout[0])
+    tiles = [[c for c in row] for row in layout]
+    return {
+        "name": "Research Lab",
+        "tiles": tiles, "w": w, "h": h,
+        "encounters": None,
+        "exits": [{"x": 5, "y": 7, "dest": "town3", "dx": 6, "dy": 8}],
+        "signs": {},
+        "doors": {},
+        "npcs": [
+            {"name": "Dr. Burrows", "pos": (1, 3), "color": WHITE,
+             "msg": "There are 8 rodent species,\n4 types: Normal, Sand,\nForest and Dark.\nEvolving raises all stats!"},
+        ],
+        "spawn": (5, 6),
+        "is_interior": True,
+    }
+
+
+def make_town4():
+    """Fourth town - Peak City."""
+    w, h = 30, 25
+    tiles = [['.' for _ in range(w)] for _ in range(h)]
+    for x in range(w):
+        tiles[0][x] = '#'
+        tiles[h-1][x] = '#'
+    for y in range(h):
+        tiles[y][0] = '#'
+        tiles[y][w-1] = '#'
+
+    for x in range(5, 25):
+        tiles[12][x] = 'P'
+        tiles[13][x] = 'P'
+    for y in range(3, 22):
+        tiles[y][14] = 'P'
+        tiles[y][15] = 'P'
+
+    # Heal center
+    for x in range(6, 12):
+        tiles[9][x] = 'R'
+        tiles[10][x] = 'H'
+        tiles[11][x] = 'H'
+    tiles[11][8] = 'D'
+    tiles[11][9] = 'D'
+
+    # Gym 3
+    for x in range(18, 26):
+        tiles[7][x] = 'R'
+        tiles[8][x] = 'H'
+        tiles[9][x] = 'H'
+        tiles[10][x] = 'H'
+        tiles[11][x] = 'H'
+    tiles[11][21] = 'D'
+
+    # Battle Dojo (upper-left)
+    for x in range(3, 10):
+        tiles[3][x] = 'R'
+        tiles[4][x] = 'H'
+        tiles[5][x] = 'H'
+        tiles[6][x] = 'H'
+        tiles[7][x] = 'H'
+    tiles[7][6] = 'D'
+
+    # South/north exits
+    tiles[h-1][14] = 'P'
+    tiles[h-1][15] = 'P'
+    tiles[0][14] = 'P'
+    tiles[0][15] = 'P'
+
+    tiles[13][5] = 'S'
+    tiles[13][22] = 'S'
+    tiles[8][5] = 'S'   # sign pointing to dojo
+
+    return {
+        "name": "Peak City",
+        "tiles": tiles, "w": w, "h": h,
+        "encounters": None,
+        "exits": [
+            {"x": 14, "y": h-1, "dest": "route4", "dx": 14, "dy": 1},
+            {"x": 15, "y": h-1, "dest": "route4", "dx": 15, "dy": 1},
+            {"x": 14, "y": 0,   "dest": "route5", "dx": 14, "dy": 23},
+            {"x": 15, "y": 0,   "dest": "route5", "dx": 15, "dy": 23},
+        ],
+        "signs": {
+            (5,  13): "Peak City\nThe ultimate trainers\ngather here!",
+            (22, 13): "Peak City Gym\nLeader: Fern",
+            (5,  8):  "Battle Dojo\nTest your strength anytime!",
+        },
+        "doors": {
+            (8,  11): {"action": "enter", "dest": "interior_center_town4", "dx": 5, "dy": 6},
+            (9,  11): {"action": "enter", "dest": "interior_center_town4", "dx": 5, "dy": 6},
+            (21, 11): {"action": "enter", "dest": "interior_gym3",         "dx": 5, "dy": 8},
+            (6,  7):  {"action": "enter", "dest": "interior_dojo",         "dx": 5, "dy": 8},
+        },
+        "spawn": (14, 13),
+    }
+
+
 # Trainer definitions
 TRAINER_DATA = {
     "route1": [
@@ -787,6 +981,12 @@ TRAINER_DATA = {
         {"name": "Lass Amy", "pos": (12, 7), "party": [("Squirrel", 4), ("Bat", 4)],
          "msg_before": "Let's battle!", "msg_after": "Good match!",
          "reward": 120},
+        {"name": "Fisher Frank", "pos": (7, 12), "party": [("Gerbil", 5)],
+         "msg_before": "I fish for\nrodents out here!", "msg_after": "Back to the pond...",
+         "reward": 100},
+        {"name": "Schoolboy Ed", "pos": (22, 5), "party": [("Mouse", 6), ("Bat", 5)],
+         "msg_before": "I study rodents\nin school!", "msg_after": "Need to study more!",
+         "reward": 120},
     ],
     "route2": [
         {"name": "Bug Catcher Dan", "pos": (17, 10), "party": [("Bat", 8), ("Bat", 9)],
@@ -795,18 +995,50 @@ TRAINER_DATA = {
         {"name": "Hiker Mike", "pos": (12, 5), "party": [("Gerbil", 10), ("Mouse", 8)],
          "msg_before": "The mountains are\nfull of gerbils!", "msg_after": "You climb well!",
          "reward": 250},
+        {"name": "Camper Tom", "pos": (7, 12), "party": [("Squirrel", 8), ("Gerbil", 9)],
+         "msg_before": "My campsite is\nrodent-proof!", "msg_after": "Almost rodent-proof...",
+         "reward": 220},
+        {"name": "Scout Ivy", "pos": (22, 17), "party": [("Mouse", 7), ("Rat", 8)],
+         "msg_before": "Scouts are always\nprepared!", "msg_after": "Not prepared enough!",
+         "reward": 200},
     ],
     "route3": [
         {"name": "Ace Trainer Zoe", "pos": (17, 8),
          "party": [("Squirrel", 14), ("Gerbil", 13), ("Bat", 14)],
          "msg_before": "I've trained hard\nfor this!", "msg_after": "Incredible skill!",
          "reward": 500},
+        {"name": "Ranger Redd", "pos": (7, 5),
+         "party": [("Rat", 15), ("Squirrel", 14)],
+         "msg_before": "I patrol these\nwoods every day!", "msg_after": "Extraordinary...",
+         "reward": 520},
+        {"name": "Expert Emma", "pos": (22, 12),
+         "party": [("Desert Gerbil", 16)],
+         "msg_before": "Experts never lose\nto beginners!", "msg_after": "A fluke, surely!",
+         "reward": 560},
     ],
     "route4": [
         {"name": "Veteran Rex", "pos": (12, 10),
          "party": [("Rat", 18), ("Desert Gerbil", 19)],
          "msg_before": "Only the best\npass through here!", "msg_after": "You ARE the best!",
          "reward": 800},
+        {"name": "Champion Roy", "pos": (7, 5),
+         "party": [("Vampire Bat", 20), ("Giant Squirrel", 21)],
+         "msg_before": "Only champions\nreach this road!", "msg_after": "A true champion!",
+         "reward": 900},
+        {"name": "Rival Leo", "pos": (22, 17),
+         "party": [("Rat", 21), ("Desert Gerbil", 22), ("Vampire Bat", 22)],
+         "msg_before": "We meet again!\nI've gotten stronger!", "msg_after": "Next time I'll win!",
+         "reward": 1000},
+    ],
+    "route5": [
+        {"name": "Ace Trainer Kai", "pos": (17, 5),
+         "party": [("Vampire Bat", 32), ("Giant Squirrel", 34), ("Desert Gerbil", 33)],
+         "msg_before": "You've reached\nthe peak! So have I!", "msg_after": "The peak belongs\nto you!",
+         "reward": 1500},
+        {"name": "Pinnacle Pete", "pos": (7, 17),
+         "party": [("Rat", 30), ("Vampire Bat", 33), ("Giant Squirrel", 32)],
+         "msg_before": "I've lived at this\naltitude for years!", "msg_after": "The altitude\ngot to me...",
+         "reward": 1400},
     ],
 }
 
@@ -828,6 +1060,15 @@ GYM_DATA = {
         "msg_after": "You've pierced the\ndarkness! Take the\nShadow Badge!",
         "badge": "Shadow Badge",
         "reward": 2000,
+    },
+    3: {
+        "leader": "Fern",
+        "title": "Forest Gym Leader",
+        "party": [("Squirrel", 28), ("Giant Squirrel", 32), ("Squirrel", 30)],
+        "msg_before": "I am Fern, keeper\nof the ancient forest.\nMy trees never fall!",
+        "msg_after": "The forest bows to you.\nYou've earned the\nLeaf Badge!",
+        "badge": "Leaf Badge",
+        "reward": 3000,
     },
 }
 
@@ -1856,8 +2097,11 @@ class Game:
             "route3": make_route(3, 30, 25, "route3", "route2", "town3",
                                 TRAINER_DATA["route3"]),
             "town3": make_town3(),
-            "route4": make_route(4, 30, 25, "route4", "town3", None,
+            "route4": make_route(4, 30, 25, "route4", "town3", "town4",
                                 TRAINER_DATA["route4"]),
+            "town4":  make_town4(),
+            "route5": make_route(5, 30, 25, "route5", "town4", None,
+                                TRAINER_DATA["route5"]),
             # Interiors
             "interior_house": make_interior_house(),
             "interior_lab": make_interior_lab(),
@@ -1865,8 +2109,13 @@ class Game:
             "interior_center_town2": make_interior_center("town2", 8, 12),
             "interior_center_town3": make_interior_center("town3", 8, 12),
             "interior_gym1": make_interior_gym(1, "town2", 21, 12),
-            "interior_gym2": make_interior_gym(2, "town3", 21, 12),
-            "interior_shop": make_interior_shop(),
+            "interior_gym2":        make_interior_gym(2, "town3", 21, 12),
+            "interior_gym3":        make_interior_gym(3, "town4", 21, 12),
+            "interior_shop":        make_interior_shop(),
+            "interior_dojo":        make_interior_dojo(),
+            "interior_friend_house":make_interior_friend_house(),
+            "interior_research":    make_interior_research(),
+            "interior_center_town4":make_interior_center("town4", 8, 12),
         }
 
         self.current_map_name = "hometown"
@@ -2003,6 +2252,15 @@ class Game:
                     elif action == "shop":
                         self.shop_cursor = 0
                         self.state = self.STATE_SHOP
+                    elif action == "dojo":
+                        if not self.party:
+                            self.textbox.show("Come back when you\nhave rodents to fight with!")
+                        else:
+                            self.textbox.show(npc["msg"],
+                                callback=lambda n=npc: self._start_battle(
+                                    n["party"], is_wild=False,
+                                    trainer_name=n["name"], reward=n["reward"]
+                                ))
                     elif action == "gym":
                         if not self.party:
                             self.textbox.show("You don't have any rodents!\nVisit Prof. Whiskers' Lab first.")
@@ -2594,12 +2852,24 @@ class Game:
 
     # Pretty map labels for slot cards
     _MAP_LABELS = {
-        "hometown": "Hometown", "route1": "Route 1", "town2": "Riverside Town",
-        "route2": "Route 2", "route3": "Route 3", "town3": "Summit Town",
-        "route4": "Route 4", "interior_house": "House", "interior_lab": "Lab",
-        "interior_center_hometown": "Pokémon Centre", "interior_center_town2": "Pokémon Centre",
-        "interior_center_town3": "Pokémon Centre", "interior_gym1": "Gym 1",
-        "interior_gym2": "Gym 2",
+        "hometown": "Rodent Village",  "route1": "Route 1",
+        "town2":    "Burrow Town",      "route2": "Route 2",
+        "town3":    "Nest City",        "route3": "Route 3",
+        "town4":    "Peak City",        "route4": "Route 4",
+        "route5":   "Route 5",
+        "interior_house":            "Your House",
+        "interior_lab":              "Rodent Lab",
+        "interior_friend_house":     "Neighbour's House",
+        "interior_research":         "Research Lab",
+        "interior_center_hometown":  "Rodent Centre",
+        "interior_center_town2":     "Rodent Centre",
+        "interior_center_town3":     "Rodent Centre",
+        "interior_center_town4":     "Rodent Centre",
+        "interior_gym1":  "Sandy's Gym",
+        "interior_gym2":  "Shade's Gym",
+        "interior_gym3":  "Fern's Gym",
+        "interior_shop":  "Rodent Shop",
+        "interior_dojo":  "Battle Dojo",
     }
 
     def _draw_slot_select(self):
