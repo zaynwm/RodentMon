@@ -3085,7 +3085,7 @@ class Game:
         self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, panel.bottom - 22))
 
         if self.textbox.active:
-            self.textbox.draw(self.screen)
+            self.textbox.draw(self.screen, SCREEN_W, SCREEN_H)
 
 
 # ---------------------------------------------------------------------------
