@@ -66,7 +66,7 @@ SPECIES = {
     "Mouse": {
         "base_hp": 30, "base_atk": 8, "base_def": 6, "base_spd": 12,
         "type": "Normal", "color": (180, 160, 140),
-        "moves_learn": {1: "Nibble", 5: "Quick Dash", 10: "Tail Whip", 15: "Cheese Bomb"},
+        "moves_learn": {1: "Nibble", 5: "Quick Dash", 10: "Tail Whip", 13: "Rival Gnaw", 15: "Cheese Bomb"},
         "evolves_to": "Rat", "evolve_level": 16,
         "catch_rate": 200,
         "desc": "A tiny mouse. Quick but fragile.",
@@ -74,8 +74,8 @@ SPECIES = {
     "Rat": {
         "base_hp": 55, "base_atk": 14, "base_def": 12, "base_spd": 15,
         "type": "Normal", "color": (120, 100, 80),
-        "moves_learn": {1: "Nibble", 5: "Quick Dash", 10: "Tail Whip", 15: "Cheese Bomb",
-                        20: "Sewer Surge", 25: "Plague Bite"},
+        "moves_learn": {1: "Nibble", 5: "Quick Dash", 10: "Tail Whip", 13: "Rival Gnaw",
+                        15: "Cheese Bomb", 20: "Sewer Surge", 25: "Plague Bite", 27: "Mirror Bite"},
         "evolves_to": None, "evolve_level": None,
         "catch_rate": 90,
         "desc": "A fierce rat. Powerful and fast.",
@@ -83,7 +83,7 @@ SPECIES = {
     "Gerbil": {
         "base_hp": 35, "base_atk": 10, "base_def": 8, "base_spd": 10,
         "type": "Sand", "color": (220, 190, 130),
-        "moves_learn": {1: "Sand Kick", 5: "Burrow", 10: "Dust Cloud", 15: "Desert Storm"},
+        "moves_learn": {1: "Sand Kick", 5: "Burrow", 10: "Dust Cloud", 13: "Desperation Dig", 15: "Desert Storm"},
         "evolves_to": "Desert Gerbil", "evolve_level": 18,
         "catch_rate": 170,
         "desc": "A sandy gerbil. Loves to dig.",
@@ -91,8 +91,8 @@ SPECIES = {
     "Desert Gerbil": {
         "base_hp": 60, "base_atk": 18, "base_def": 15, "base_spd": 13,
         "type": "Sand", "color": (190, 150, 80),
-        "moves_learn": {1: "Sand Kick", 5: "Burrow", 10: "Dust Cloud", 15: "Desert Storm",
-                        22: "Sandstorm Fury", 28: "Earthquake"},
+        "moves_learn": {1: "Sand Kick", 5: "Burrow", 10: "Dust Cloud", 13: "Desperation Dig",
+                        15: "Desert Storm", 22: "Sandstorm Fury", 28: "Earthquake", 30: "Sand Shatter"},
         "evolves_to": None, "evolve_level": None,
         "catch_rate": 60,
         "desc": "A powerful desert dweller.",
@@ -100,7 +100,7 @@ SPECIES = {
     "Squirrel": {
         "base_hp": 40, "base_atk": 9, "base_def": 10, "base_spd": 11,
         "type": "Forest", "color": (160, 100, 50),
-        "moves_learn": {1: "Acorn Toss", 5: "Tree Climb", 10: "Nut Barrage", 15: "Forest Shield"},
+        "moves_learn": {1: "Acorn Toss", 5: "Tree Climb", 10: "Nut Barrage", 13: "Underdog Strike", 15: "Forest Shield"},
         "evolves_to": "Giant Squirrel", "evolve_level": 20,
         "catch_rate": 150,
         "desc": "A bushy-tailed acorn hoarder.",
@@ -108,8 +108,8 @@ SPECIES = {
     "Giant Squirrel": {
         "base_hp": 70, "base_atk": 16, "base_def": 18, "base_spd": 12,
         "type": "Forest", "color": (120, 70, 30),
-        "moves_learn": {1: "Acorn Toss", 5: "Tree Climb", 10: "Nut Barrage", 15: "Forest Shield",
-                        24: "Oak Slam", 30: "Nature Wrath"},
+        "moves_learn": {1: "Acorn Toss", 5: "Tree Climb", 10: "Nut Barrage", 13: "Underdog Strike",
+                        15: "Forest Shield", 24: "Oak Slam", 30: "Nature Wrath", 32: "Root Pierce"},
         "evolves_to": None, "evolve_level": None,
         "catch_rate": 50,
         "desc": "A massive squirrel. Tough as oak.",
@@ -117,7 +117,7 @@ SPECIES = {
     "Bat": {
         "base_hp": 32, "base_atk": 11, "base_def": 5, "base_spd": 14,
         "type": "Dark", "color": (80, 60, 100),
-        "moves_learn": {1: "Screech", 5: "Wing Slash", 10: "Echo Pulse", 15: "Night Dive"},
+        "moves_learn": {1: "Screech", 5: "Wing Slash", 10: "Echo Pulse", 13: "Frantic Dive", 15: "Night Dive"},
         "evolves_to": "Vampire Bat", "evolve_level": 17,
         "catch_rate": 180,
         "desc": "A nocturnal flyer with sonar.",
@@ -125,11 +125,62 @@ SPECIES = {
     "Vampire Bat": {
         "base_hp": 58, "base_atk": 20, "base_def": 10, "base_spd": 18,
         "type": "Dark", "color": (50, 30, 70),
-        "moves_learn": {1: "Screech", 5: "Wing Slash", 10: "Echo Pulse", 15: "Night Dive",
-                        21: "Blood Drain", 26: "Shadow Storm"},
+        "moves_learn": {1: "Screech", 5: "Wing Slash", 10: "Echo Pulse", 13: "Frantic Dive",
+                        15: "Night Dive", 21: "Blood Drain", 26: "Shadow Storm", 28: "Shadow Pierce"},
         "evolves_to": None, "evolve_level": None,
         "catch_rate": 45,
         "desc": "A terrifying predator of the night.",
+    },
+    "Otter": {
+        "base_hp": 38, "base_atk": 10, "base_def": 9, "base_spd": 11,
+        "type": "Water", "color": (90, 120, 150),
+        "moves_learn": {1: "Water Splash", 5: "Dive", 10: "River Rush", 13: "Undercurrent", 15: "Whirlpool"},
+        "evolves_to": "River Otter", "evolve_level": 18,
+        "catch_rate": 160,
+        "desc": "A playful otter fond of rivers.",
+    },
+    "River Otter": {
+        "base_hp": 65, "base_atk": 17, "base_def": 15, "base_spd": 14,
+        "type": "Water", "color": (60, 90, 120),
+        "moves_learn": {1: "Water Splash", 5: "Dive", 10: "River Rush", 13: "Undercurrent",
+                        15: "Whirlpool", 22: "Tidal Wave", 28: "Torrent Blast", 30: "Torrent Pierce"},
+        "evolves_to": None, "evolve_level": None,
+        "catch_rate": 55,
+        "desc": "A powerful river predator.",
+    },
+    "Lemming": {
+        "base_hp": 32, "base_atk": 9, "base_def": 7, "base_spd": 13,
+        "type": "Ice", "color": (200, 230, 240),
+        "moves_learn": {1: "Ice Chip", 5: "Freeze Dash", 10: "Blizzard Breath", 13: "Fearless Charge", 15: "Frost Shield"},
+        "evolves_to": "Arctic Lemming", "evolve_level": 19,
+        "catch_rate": 175,
+        "desc": "A tiny arctic rodent that charges fearlessly.",
+    },
+    "Arctic Lemming": {
+        "base_hp": 60, "base_atk": 18, "base_def": 14, "base_spd": 16,
+        "type": "Ice", "color": (160, 200, 220),
+        "moves_learn": {1: "Ice Chip", 5: "Freeze Dash", 10: "Blizzard Breath", 13: "Fearless Charge",
+                        15: "Frost Shield", 23: "Avalanche", 29: "Polar Storm", 31: "Ice Pierce"},
+        "evolves_to": None, "evolve_level": None,
+        "catch_rate": 50,
+        "desc": "A fearless blizzard warrior.",
+    },
+    "Hamster": {
+        "base_hp": 42, "base_atk": 11, "base_def": 11, "base_spd": 9,
+        "type": "Normal", "color": (230, 190, 140),
+        "moves_learn": {1: "Cheek Puff", 5: "Roll Attack", 10: "Seed Burst", 13: "Rival Gnaw", 15: "Stampede"},
+        "evolves_to": "Giant Hamster", "evolve_level": 17,
+        "catch_rate": 155,
+        "desc": "A chubby hamster with enormous cheeks.",
+    },
+    "Giant Hamster": {
+        "base_hp": 72, "base_atk": 19, "base_def": 20, "base_spd": 10,
+        "type": "Normal", "color": (190, 140, 90),
+        "moves_learn": {1: "Cheek Puff", 5: "Roll Attack", 10: "Seed Burst", 13: "Rival Gnaw",
+                        15: "Stampede", 21: "Bulldoze", 27: "Hyper Roll", 29: "Mirror Bite"},
+        "evolves_to": None, "evolve_level": None,
+        "catch_rate": 45,
+        "desc": "A massive hamster that rolls over anything.",
     },
 }
 
@@ -159,14 +210,51 @@ MOVES = {
     "Night Dive":    {"power": 40, "type": "Dark",   "acc": 85,  "desc": "Dives from darkness."},
     "Blood Drain":   {"power": 45, "type": "Dark",   "acc": 85,  "desc": "Drains HP.", "effect": "drain"},
     "Shadow Storm":  {"power": 60, "type": "Dark",   "acc": 78,  "desc": "A storm of shadows."},
+    # Underdog moves — deal bonus damage to stronger opponents (one per type)
+    "Rival Gnaw":      {"power": 38, "type": "Normal", "acc": 90, "effect": "underdog", "desc": "Hits harder vs stronger foes."},
+    "Desperation Dig": {"power": 40, "type": "Sand",   "acc": 88, "effect": "underdog", "desc": "Digs deep when outmatched."},
+    "Underdog Strike": {"power": 40, "type": "Forest", "acc": 88, "effect": "underdog", "desc": "Strikes back from the roots."},
+    "Frantic Dive":    {"power": 38, "type": "Dark",   "acc": 90, "effect": "underdog", "desc": "Desperate lunge from the dark."},
+    "Undercurrent":    {"power": 40, "type": "Water",  "acc": 90, "effect": "underdog", "desc": "Surges from below the surface."},
+    "Fearless Charge": {"power": 40, "type": "Ice",    "acc": 88, "effect": "underdog", "desc": "Charges without fear of pain."},
+    # Pierce moves — ignore same-type resistance (one per type, for evolved forms)
+    "Mirror Bite":     {"power": 35, "type": "Normal", "acc": 88, "effect": "pierce", "desc": "Cuts through Normal resistance."},
+    "Sand Shatter":    {"power": 35, "type": "Sand",   "acc": 85, "effect": "pierce", "desc": "Shatters sandy defences."},
+    "Root Pierce":     {"power": 35, "type": "Forest", "acc": 85, "effect": "pierce", "desc": "Roots pierce forest armour."},
+    "Shadow Pierce":   {"power": 35, "type": "Dark",   "acc": 85, "effect": "pierce", "desc": "Cuts through shadow defences."},
+    "Torrent Pierce":  {"power": 35, "type": "Water",  "acc": 85, "effect": "pierce", "desc": "Water cuts through water."},
+    "Ice Pierce":      {"power": 35, "type": "Ice",    "acc": 85, "effect": "pierce", "desc": "Ice shatters ice armour."},
+    # Water moves
+    "Water Splash":  {"power": 15, "type": "Water",  "acc": 100, "desc": "Splashes with water."},
+    "Dive":          {"power": 25, "type": "Water",  "acc": 95,  "desc": "Dives and rams the foe."},
+    "River Rush":    {"power": 38, "type": "Water",  "acc": 90,  "desc": "Charges like a river current."},
+    "Whirlpool":     {"power": 0,  "type": "Water",  "acc": 90,  "desc": "Spinning water lowers accuracy.", "effect": "acc_down"},
+    "Tidal Wave":    {"power": 55, "type": "Water",  "acc": 80,  "desc": "A crushing wall of water."},
+    "Torrent Blast": {"power": 70, "type": "Water",  "acc": 75,  "desc": "An unstoppable torrent."},
+    # Ice moves
+    "Ice Chip":      {"power": 15, "type": "Ice",    "acc": 100, "desc": "Chips a shard of ice."},
+    "Freeze Dash":   {"power": 22, "type": "Ice",    "acc": 95,  "desc": "Charges through frozen air."},
+    "Blizzard Breath":{"power": 38,"type": "Ice",    "acc": 88,  "desc": "Exhales a freezing gale."},
+    "Frost Shield":  {"power": 0,  "type": "Ice",    "acc": 100, "desc": "Ice armour raises defense.", "effect": "def_up"},
+    "Avalanche":     {"power": 55, "type": "Ice",    "acc": 80,  "desc": "Buries foe in snow."},
+    "Polar Storm":   {"power": 70, "type": "Ice",    "acc": 72,  "desc": "A raging arctic blizzard."},
+    # Extra Normal moves (Hamster line)
+    "Cheek Puff":    {"power": 15, "type": "Normal", "acc": 100, "desc": "Puffs cheeks and headbutts."},
+    "Roll Attack":   {"power": 25, "type": "Normal", "acc": 95,  "desc": "Curls up and rolls into foe."},
+    "Seed Burst":    {"power": 38, "type": "Normal", "acc": 90,  "desc": "Spits stored seeds rapidly."},
+    "Stampede":      {"power": 48, "type": "Normal", "acc": 85,  "desc": "Charges in a wild frenzy."},
+    "Bulldoze":      {"power": 58, "type": "Normal", "acc": 85,  "desc": "Flattens everything in its path."},
+    "Hyper Roll":    {"power": 68, "type": "Normal", "acc": 78,  "desc": "Spins at blinding speed."},
 }
 
 # Type effectiveness: attacker_type -> {defender_type: multiplier}
 TYPE_CHART = {
-    "Normal": {"Normal": 1.0, "Sand": 1.0, "Forest": 1.0, "Dark": 0.5},
-    "Sand":   {"Normal": 1.0, "Sand": 0.5, "Forest": 0.5, "Dark": 2.0},
-    "Forest": {"Normal": 1.0, "Sand": 2.0, "Forest": 0.5, "Dark": 1.0},
-    "Dark":   {"Normal": 2.0, "Sand": 0.5, "Forest": 1.0, "Dark": 0.5},
+    "Normal": {"Normal": 1.0, "Sand": 1.0, "Forest": 1.0, "Dark": 0.5, "Water": 1.0, "Ice": 1.0},
+    "Sand":   {"Normal": 1.0, "Sand": 0.5, "Forest": 0.5, "Dark": 2.0, "Water": 0.5, "Ice": 2.0},
+    "Forest": {"Normal": 1.0, "Sand": 2.0, "Forest": 0.5, "Dark": 1.0, "Water": 2.0, "Ice": 0.5},
+    "Dark":   {"Normal": 2.0, "Sand": 0.5, "Forest": 1.0, "Dark": 0.5, "Water": 1.0, "Ice": 2.0},
+    "Water":  {"Normal": 1.0, "Sand": 2.0, "Forest": 0.5, "Dark": 1.0, "Water": 0.5, "Ice": 0.5},
+    "Ice":    {"Normal": 1.0, "Sand": 0.5, "Forest": 2.0, "Dark": 0.5, "Water": 2.0, "Ice": 0.5},
 }
 
 TYPE_COLORS = {
@@ -174,31 +262,40 @@ TYPE_COLORS = {
     "Sand":   (210, 180, 100),
     "Forest": (80, 160, 80),
     "Dark":   (100, 60, 140),
+    "Water":  (60, 120, 200),
+    "Ice":    (180, 220, 240),
 }
 
 # Rodent Shop inventory  (species, level, price)
 SHOP_ITEMS = [
-    {"species": "Mouse",         "level":  5, "price":  80},
-    {"species": "Gerbil",        "level":  5, "price": 100},
-    {"species": "Bat",           "level":  5, "price": 110},
-    {"species": "Squirrel",      "level":  5, "price": 120},
-    {"species": "Rat",           "level": 10, "price": 300},
-    {"species": "Desert Gerbil", "level": 10, "price": 380},
-    {"species": "Giant Squirrel","level": 10, "price": 420},
-    {"species": "Vampire Bat",   "level": 10, "price": 480},
+    {"species": "Mouse",          "level":  5, "price":  80},
+    {"species": "Gerbil",         "level":  5, "price": 100},
+    {"species": "Bat",            "level":  5, "price": 110},
+    {"species": "Squirrel",       "level":  5, "price": 120},
+    {"species": "Hamster",        "level":  5, "price": 110},
+    {"species": "Otter",          "level":  5, "price": 120},
+    {"species": "Lemming",        "level":  5, "price": 100},
+    {"species": "Rat",            "level": 10, "price": 300},
+    {"species": "Desert Gerbil",  "level": 10, "price": 380},
+    {"species": "Giant Squirrel", "level": 10, "price": 420},
+    {"species": "Vampire Bat",    "level": 10, "price": 480},
+    {"species": "Giant Hamster",  "level": 10, "price": 420},
+    {"species": "River Otter",    "level": 10, "price": 450},
+    {"species": "Arctic Lemming", "level": 10, "price": 440},
 ]
 
 # Wild encounter tables per area
 ENCOUNTER_TABLES = {
-    "route1": [("Mouse", 3, 6, 50), ("Squirrel", 3, 5, 30), ("Bat", 3, 5, 20)],
-    "route2": [("Mouse", 6, 10, 30), ("Gerbil", 5, 8, 35), ("Bat", 5, 8, 35)],
-    "route3": [("Rat", 10, 15, 25), ("Squirrel", 8, 13, 25), ("Gerbil", 8, 12, 25),
-               ("Bat", 10, 14, 25)],
-    "route4": [("Rat", 14, 20, 20), ("Desert Gerbil", 18, 22, 15),
+    "route1": [("Mouse", 3, 6, 40), ("Squirrel", 3, 5, 25), ("Bat", 3, 5, 20), ("Hamster", 3, 6, 15)],
+    "route2": [("Mouse", 6, 10, 25), ("Gerbil", 5, 8, 25), ("Bat", 5, 8, 25), ("Otter", 5, 9, 25)],
+    "route3": [("Rat", 10, 15, 20), ("Squirrel", 8, 13, 20), ("Gerbil", 8, 12, 20),
+               ("Bat", 10, 14, 20), ("Hamster", 9, 13, 20)],
+    "route4": [("Rat", 14, 20, 15), ("Desert Gerbil", 18, 22, 15),
                ("Giant Squirrel", 20, 24, 15), ("Vampire Bat", 17, 22, 15),
-               ("Mouse", 12, 16, 35)],
-    "route5": [("Vampire Bat", 24, 32, 25), ("Giant Squirrel", 25, 33, 25),
-               ("Desert Gerbil", 24, 31, 25), ("Rat", 22, 29, 25)],
+               ("Lemming", 15, 20, 20), ("Otter", 14, 19, 20)],
+    "route5": [("Vampire Bat", 24, 32, 20), ("Giant Squirrel", 25, 33, 20),
+               ("Desert Gerbil", 24, 31, 20), ("Arctic Lemming", 22, 30, 20),
+               ("River Otter", 23, 31, 20)],
 }
 
 # ---------------------------------------------------------------------------
@@ -1148,6 +1245,67 @@ def draw_rodent_sprite(surface, species_name, x, y, size=64, flip=False):
         # Feet
         pygame.draw.ellipse(surface, darker, (x + s//3, y + 2*s//3 - 2, 6, 4))
         pygame.draw.ellipse(surface, darker, (x + s//2, y + 2*s//3 - 2, 6, 4))
+    elif "Otter" in species_name:
+        # Otter: streamlined body, flat tail
+        body_rect = pygame.Rect(x + s//6, y + s//3, 2*s//3, s//3)
+        pygame.draw.ellipse(surface, color, body_rect)
+        # Head
+        pygame.draw.circle(surface, color, (x + s//2, y + s//3), s//5)
+        # Small round ears
+        pygame.draw.circle(surface, darker, (x + s//2 - 7, y + s//4 - 2), 4)
+        pygame.draw.circle(surface, darker, (x + s//2 + 7, y + s//4 - 2), 4)
+        # Eyes
+        pygame.draw.circle(surface, BLACK, (x + s//2 - 4, y + s//3 - 3), 2)
+        pygame.draw.circle(surface, BLACK, (x + s//2 + 4, y + s//3 - 3), 2)
+        pygame.draw.circle(surface, WHITE, (x + s//2 - 3, y + s//3 - 4), 1)
+        # Wide flat tail
+        tail_x = x + 3*s//4 if not flip else x + s//8
+        pygame.draw.ellipse(surface, darker, (tail_x - 4, y + s//2, 14, 6))
+        # Webbed feet
+        pygame.draw.ellipse(surface, darker, (x + s//3, y + 2*s//3, 10, 5))
+        pygame.draw.ellipse(surface, darker, (x + s//2, y + 2*s//3, 10, 5))
+    elif "Lemming" in species_name:
+        # Lemming: round fluffy body
+        is_arctic = "Arctic" in species_name
+        pygame.draw.ellipse(surface, color, (x + s//5, y + s//4, 3*s//5, s//2))
+        # Head (blends into body)
+        pygame.draw.circle(surface, color, (x + s//2, y + s//3), s//5)
+        # Tiny ears
+        pygame.draw.circle(surface, lighter, (x + s//2 - 5, y + s//4), 3)
+        pygame.draw.circle(surface, lighter, (x + s//2 + 5, y + s//4), 3)
+        # Eyes
+        pygame.draw.circle(surface, BLACK, (x + s//2 - 4, y + s//3 - 1), 2)
+        pygame.draw.circle(surface, BLACK, (x + s//2 + 4, y + s//3 - 1), 2)
+        if is_arctic:
+            pygame.draw.circle(surface, (200, 240, 255), (x + s//2 - 3, y + s//3 - 2), 1)
+        # Stubby tail
+        pygame.draw.ellipse(surface, darker, (x + s//2 + s//5, y + s//2 - 2, 6, 4))
+        # Feet
+        pygame.draw.ellipse(surface, darker, (x + s//3, y + 3*s//4 - 3, 8, 4))
+        pygame.draw.ellipse(surface, darker, (x + s//2, y + 3*s//4 - 3, 8, 4))
+    elif "Hamster" in species_name:
+        # Hamster: very round body with puffy cheeks
+        is_giant = "Giant" in species_name
+        # Body
+        pygame.draw.ellipse(surface, color, (x + s//5, y + s//4, 3*s//5, s//2))
+        # Puffy cheeks
+        pygame.draw.ellipse(surface, lighter, (x + s//4 - 4, y + s//3, 16, 12))
+        pygame.draw.ellipse(surface, lighter, (x + s//2 + 2, y + s//3, 16, 12))
+        # Head
+        pygame.draw.circle(surface, color, (x + s//2, y + s//3), s//5)
+        # Small round ears
+        pygame.draw.circle(surface, PINK, (x + s//2 - 7, y + s//4), 5 if not is_giant else 7)
+        pygame.draw.circle(surface, PINK, (x + s//2 + 7, y + s//4), 5 if not is_giant else 7)
+        # Eyes
+        pygame.draw.circle(surface, BLACK, (x + s//2 - 4, y + s//3 - 2), 2)
+        pygame.draw.circle(surface, BLACK, (x + s//2 + 4, y + s//3 - 2), 2)
+        # Nose
+        pygame.draw.circle(surface, PINK, (x + s//2, y + s//3 + 3), 2)
+        # Tiny tail
+        pygame.draw.ellipse(surface, darker, (x + s//2 + s//4, y + s//2, 5, 4))
+        # Feet
+        pygame.draw.ellipse(surface, darker, (x + s//3, y + 3*s//4 - 2, 9, 5))
+        pygame.draw.ellipse(surface, darker, (x + s//2, y + 3*s//4 - 2, 9, 5))
     else:
         # Mouse / Rat: classic rodent
         body_w = s//2 if "Rat" not in species_name else 3*s//5
@@ -1506,11 +1664,19 @@ class Battle:
         move_type = move_data["type"]
         def_type = defender.type
         eff = TYPE_CHART.get(move_type, {}).get(def_type, 1.0)
+        # Pierce: ignore resistance vs same/resistant types (treat as neutral)
+        if move_data.get("effect") == "pierce" and eff < 1.0:
+            eff = 1.0
         # STAB
         stab = 1.3 if move_type == attacker.type else 1.0
+        # Underdog bonus: up to 2x when far behind in level
+        underdog_mult = 1.0
+        if move_data.get("effect") == "underdog" and attacker.level < defender.level:
+            diff = defender.level - attacker.level
+            underdog_mult = min(2.0, 1.0 + diff * 0.05)
         # Random factor
         rand = random.uniform(0.85, 1.0)
-        damage = int(base * eff * stab * rand)
+        damage = int(base * eff * stab * underdog_mult * rand)
         return max(1, damage), eff
 
     def _apply_effect(self, move_data, target, attacker):
@@ -1579,7 +1745,12 @@ class Battle:
             if move_data["power"] > 0:
                 dmg, eff = self._calc_damage(attacker, defender, move_data)
                 defender.hp = max(0, defender.hp - dmg)
-                if eff > 1.0:
+                effect = move_data.get("effect")
+                if effect == "underdog" and attacker.level < defender.level:
+                    msgs.append("The underdog strikes back!")
+                elif effect == "pierce" and TYPE_CHART.get(move_data["type"], {}).get(defender.type, 1.0) < 1.0:
+                    msgs.append("It pierced through the resistance!")
+                elif eff > 1.0:
                     msgs.append("It's super effective!")
                 elif eff < 1.0:
                     msgs.append("It's not very effective...")
