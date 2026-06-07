@@ -2139,16 +2139,17 @@ class Battle:
                 pygame.draw.polygon(surface, BLACK, [(x, y + 4), (x, y + 14), (x + 10, y + 9)])
 
     def _draw_move_menu(self, surface, rodent):
-        box = pygame.Rect(8, SCREEN_H - 120, SCREEN_W - 16, 112)
+        box = pygame.Rect(8, SCREEN_H - 136, SCREEN_W - 16, 128)
         pygame.draw.rect(surface, WHITE, box)
         pygame.draw.rect(surface, BLACK, box, 3)
 
+        row_h = 22
+        rows_start = box.y + 6
         for i, move_name in enumerate(rodent.moves):
             move_data = MOVES[move_name]
-            y = SCREEN_H - 114 + i * 26
-            # Type color dot
+            y = rows_start + i * row_h
             tc = TYPE_COLORS.get(move_data["type"], GREY)
-            pygame.draw.circle(surface, tc, (30, y + 8), 5)
+            pygame.draw.circle(surface, tc, (30, y + 7), 5)
             text = self.font.render(f"{move_name}", True, BLACK)
             surface.blit(text, (42, y))
             pow_text = self.small_font.render(
@@ -2159,13 +2160,14 @@ class Battle:
             surface.blit(acc_text, (340, y + 2))
 
             if i == self.move_cursor:
-                pygame.draw.polygon(surface, BLACK, [(20, y + 3), (20, y + 13), (26, y + 8)])
+                pygame.draw.polygon(surface, BLACK, [(20, y + 2), (20, y + 12), (26, y + 7)])
 
-        # Move description
+        # Move description — sits in the remaining space below the rows
         if self.move_cursor < len(rodent.moves):
             desc = MOVES[rodent.moves[self.move_cursor]]["desc"]
             desc_text = self.small_font.render(desc, True, DARK_GREY)
-            surface.blit(desc_text, (42, SCREEN_H - 18))
+            desc_y = rows_start + len(rodent.moves) * row_h + 4
+            surface.blit(desc_text, (42, desc_y))
 
     def _draw_switch_menu(self, surface):
         box = pygame.Rect(40, 20, SCREEN_W - 80, SCREEN_H - 40)
@@ -2226,6 +2228,7 @@ class Game:
     STATE_SETTINGS = 6
     STATE_MERGE = 7
     STATE_SHOP  = 8
+    STATE_RELEASE = 9
 
     NUM_SAVE_SLOTS = 3
 
@@ -2319,6 +2322,10 @@ class Game:
         self.merge_cursor = 0
         self.merge_first  = None    # index of first selected rodent, or None
         self.shop_cursor  = 0
+
+        # Release
+        self.release_cursor  = 0
+        self.release_confirm = False
 
         # Save slots
         self.save_slot = None        # active slot number (1-3)
@@ -2741,8 +2748,11 @@ class Game:
                     self.menu_cursor = (self.menu_cursor + 1) % 6
                     if self.sfx: self.sfx.play('cursor')
                 elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
-                    if self.menu_cursor == 0:  # Party
-                        pass
+                    if self.menu_cursor == 0:  # Party / Release
+                        self.release_cursor  = 0
+                        self.release_confirm = False
+                        self.state = self.STATE_RELEASE
+                        if self.sfx: self.sfx.play('confirm')
                     elif self.menu_cursor == 1:  # Merge
                         self.merge_cursor = 0
                         self.merge_first = None
@@ -2812,6 +2822,46 @@ class Game:
                         self.merge_first = None
                         if self.sfx: self.sfx.play('back')
                     else:
+                        self.state = self.STATE_MENU
+                        if self.sfx: self.sfx.play('back')
+
+        elif self.state == self.STATE_RELEASE:
+            if self.textbox.active:
+                if event.type == pygame.KEYDOWN and event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                    self.textbox.advance()
+                return
+            if event.type == pygame.KEYDOWN:
+                n = len(self.party)
+                if self.release_confirm:
+                    if event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                        r = self.party[self.release_cursor]
+                        name = r.nickname
+                        self.party.pop(self.release_cursor)
+                        self.release_cursor = min(self.release_cursor, len(self.party) - 1)
+                        self.release_confirm = False
+                        self._save_game()
+                        self.state = self.STATE_OVERWORLD
+                        self.textbox.show(f"You released {name}.\nGoodbye, {name}!")
+                        if self.sfx: self.sfx.play('back')
+                    elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                        self.release_confirm = False
+                        if self.sfx: self.sfx.play('back')
+                else:
+                    if event.key == pygame.K_UP:
+                        self.release_cursor = (self.release_cursor - 1) % n
+                        if self.sfx: self.sfx.play('cursor')
+                    elif event.key == pygame.K_DOWN:
+                        self.release_cursor = (self.release_cursor + 1) % n
+                        if self.sfx: self.sfx.play('cursor')
+                    elif event.key in (pygame.K_z, pygame.K_RETURN, pygame.K_SPACE):
+                        if n <= 1:
+                            self.textbox.show("You can't release\nyour last rodent!")
+                            if self.sfx: self.sfx.play('back')
+                        else:
+                            self.release_confirm = True
+                            if self.sfx: self.sfx.play('cursor')
+                    elif event.key in (pygame.K_x, pygame.K_ESCAPE):
+                        self.release_confirm = False
                         self.state = self.STATE_MENU
                         if self.sfx: self.sfx.play('back')
 
@@ -2976,6 +3026,9 @@ class Game:
         elif self.state == self.STATE_MERGE:
             self._draw_overworld()
             self._draw_merge()
+        elif self.state == self.STATE_RELEASE:
+            self._draw_overworld()
+            self._draw_release()
         elif self.state == self.STATE_SHOP:
             self._draw_overworld()
             self._draw_shop()
@@ -3256,6 +3309,62 @@ class Game:
             "[Z] Select   [Esc] Deselect / Back", True, GREY)
         self.screen.blit(hint, (panel.centerx - hint.get_width() // 2, panel.bottom - 18))
 
+    def _draw_release(self):
+        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 120))
+        self.screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect(30, 15, SCREEN_W - 60, SCREEN_H - 30)
+        pygame.draw.rect(self.screen, WHITE, panel)
+        pygame.draw.rect(self.screen, BLACK, panel, 2)
+
+        heading = self.font.render("RODENTS  —  Select one to release", True, BLACK)
+        self.screen.blit(heading, (panel.centerx - heading.get_width() // 2, panel.y + 8))
+
+        row_h = min(62, (panel.h - 70) // max(len(self.party), 1))
+        for i, r in enumerate(self.party):
+            y = panel.y + 38 + i * row_h
+            selected = (i == self.release_cursor)
+
+            bg = (255, 200, 200) if (selected and self.release_confirm) else \
+                 LIGHT_GREEN     if selected else (245, 245, 245)
+            pygame.draw.rect(self.screen, bg,
+                             (panel.x + 4, y - 2, panel.w - 8, row_h - 4),
+                             border_radius=4)
+
+            if selected:
+                pygame.draw.polygon(self.screen, BLACK,
+                    [(panel.x + 10, y + 8),
+                     (panel.x + 10, y + 20),
+                     (panel.x + 20, y + 14)])
+
+            draw_rodent_sprite(self.screen, r.species, panel.x + 26, y - 2, 44)
+            name_surf = self.font.render(
+                f"{r.nickname}  Lv.{r.level}  [{r.species}]", True, BLACK)
+            self.screen.blit(name_surf, (panel.x + 76, y + 2))
+            stats = self.small_font.render(
+                f"HP {r.hp}/{r.max_hp}   ATK {r.effective_atk()}   DEF {r.effective_def()}   Type: {r.type}",
+                True, DARK_GREY)
+            self.screen.blit(stats, (panel.x + 76, y + 22))
+            moves = self.small_font.render(
+                f"Moves: {', '.join(r.moves)}", True, DARK_GREY)
+            self.screen.blit(moves, (panel.x + 76, y + 38))
+
+        if self.release_confirm:
+            r = self.party[self.release_cursor]
+            confirm_surf = self.font.render(
+                f"Release {r.nickname}?  [Z] Yes   [X] No", True, RED)
+            self.screen.blit(confirm_surf,
+                (panel.centerx - confirm_surf.get_width() // 2, panel.bottom - 28))
+        else:
+            hint = self.small_font.render(
+                "[Z] Select to release   [Esc] Back", True, GREY)
+            self.screen.blit(hint,
+                (panel.centerx - hint.get_width() // 2, panel.bottom - 20))
+
+        if self.textbox.active:
+            self.textbox.draw(self.screen, SCREEN_W, SCREEN_H)
+
     def _draw_starter_select(self):
         self.screen.fill(DARK_GREEN)
 
@@ -3486,10 +3595,20 @@ class Game:
 
         card_w = panel.width - 24
         card_h = 54
+        card_stride = card_h + 4
         top_y = panel.y + 40
+        hint_h = 24
+        list_h = panel.bottom - hint_h - top_y
+        visible = max(1, list_h // card_stride)
 
-        for i, item in enumerate(SHOP_ITEMS):
-            cy = top_y + i * (card_h + 4)
+        # Scroll so the selected item is always in view
+        scroll = max(0, min(self.shop_cursor - visible + 1,
+                            len(SHOP_ITEMS) - visible))
+        scroll = max(0, min(scroll, self.shop_cursor))
+
+        for slot, i in enumerate(range(scroll, min(scroll + visible, len(SHOP_ITEMS)))):
+            item = SHOP_ITEMS[i]
+            cy = top_y + slot * card_stride
             selected = (i == self.shop_cursor)
             can_afford = self.money >= item["price"]
 
@@ -3521,6 +3640,14 @@ class Game:
             price_col = (LIGHT_GREEN if can_afford else RED) if selected else (DARK_GREY if can_afford else RED)
             price_t = self.font.render(f"${item['price']}", True, price_col)
             self.screen.blit(price_t, (panel.x + card_w - price_t.get_width() + 4, cy + 6))
+
+        # Scroll indicators
+        if scroll > 0:
+            up_t = self.small_font.render("▲", True, DARK_GREY)
+            self.screen.blit(up_t, (panel.right - 20, top_y))
+        if scroll + visible < len(SHOP_ITEMS):
+            dn_t = self.small_font.render("▼", True, DARK_GREY)
+            self.screen.blit(dn_t, (panel.right - 20, top_y + visible * card_stride - 16))
 
         hint = self.small_font.render("[Z] Buy   [Esc] Leave", True, GREY)
         self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, panel.bottom - 22))
